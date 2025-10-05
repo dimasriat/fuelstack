@@ -4,11 +4,9 @@ import {
   uintCV,
   UIntCV,
 } from '@stacks/transactions';
+import { CONTRACT_ADDRESS, CONTRACT_NAME } from '../config';
 
 const client = clientFromNetwork(STACKS_MAINNET);
-
-const CONTRACT_ADDRESS = 'SP3P57DRBDE7ZRHEGEA3S64H0RFPSR8MV3NC2XKB8';
-const CONTRACT_NAME = 'message_board';
 
 export const getMessages = async () => {
   const countResult = (await fetchCallReadOnlyFunction({

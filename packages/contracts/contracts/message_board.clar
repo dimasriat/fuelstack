@@ -11,13 +11,22 @@
 ;; Counter for message IDs
 (define-data-var message-count uint u0)
 
+;; ----------
 ;; Public function to add a new message
 (define-public (add-message (content (string-utf8 280)))
   (let ((id (+ (var-get message-count) u1)))
     (map-set messages id content)
     (map-set message-authors id tx-sender)
     (var-set message-count id)
+    ;; Emit event
+    (print {
+      event: "message-added",
+      message-id: id,
+      author: tx-sender,
+      content: content
+    })
     (ok id)))
+;; ----------
 
 ;; Read-only function to get a message by ID
 (define-read-only (get-message (id uint))

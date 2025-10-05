@@ -9,9 +9,9 @@ plan:
     - id: 0
       transactions:
         - contract-publish:
-            contract-name: message_board
+            contract-name: message_board-2025-10-05-15-57
             expected-sender: SP3P57DRBDE7ZRHEGEA3S64H0RFPSR8MV3NC2XKB8
-            cost: 14590
+            cost: 16250
             path: contracts/message_board.clar
             anchor-block-only: true
             clarity-version: 3
