@@ -18,9 +18,10 @@
     "typescript": "^5.5.3"
   },
   "dependencies": {
-    "dotenv": "^16.4.7",
-    "minimist": "^1.2.8",
     "@stacks/network": "^7.2.0",
-    "@stacks/transactions": "^7.0.5"
+    "@stacks/transactions": "^7.0.5",
+    "@stacks/wallet-sdk": "^7.2.0",
+    "dotenv": "^16.4.7",
+    "minimist": "^1.2.8"
   }
 }

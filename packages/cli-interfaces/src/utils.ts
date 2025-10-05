@@ -1,8 +1,6 @@
 import readline from 'readline';
 import fs from 'fs/promises';
 
-// ████ Common █████████████████████████████████████████████████████████████████
-
 export function ask(question: string) {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -28,9 +26,6 @@ export function jsonStringifyBigInt(json: any) {
     2,
   );
 }
-
-// type(uint32).max
-export const FILL_DEADLINE = 4294967295;
 
 export async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
