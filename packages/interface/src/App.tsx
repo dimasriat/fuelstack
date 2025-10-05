@@ -53,19 +53,6 @@ function App() {
 
   const connectWallet = async () => {
     try {
-      // await connect({
-      //   appDetails: {
-      //     name: "Message Board",
-      //     icon: window.location.origin + "/logo.svg",
-      //   },
-      //   onFinish: () => {
-      //     setConnected(true);
-      //     // Small delay to ensure connection is fully established
-      //     setTimeout(() => {
-      //       loadMessages();
-      //     }, 100);
-      //   },
-      // });
       await connect();
       setConnected(true);
       setTimeout(() => {
