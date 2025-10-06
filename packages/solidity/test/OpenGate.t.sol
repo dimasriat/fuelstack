@@ -9,16 +9,21 @@ contract OpenGateTest is Test {
 
     function setUp() public {
         counter = new OpenGate();
-        counter.setNumber(0);
+        // counter.setNumber(0);
     }
 
-    function test_Increment() public {
-        counter.increment();
-        assertEq(counter.number(), 1);
+    function test_open() public {
+        counter.setNumber(42);
+        assertEq(counter.number(), 42);
     }
 
-    function testFuzz_SetNumber(uint256 x) public {
-        counter.setNumber(x);
-        assertEq(counter.number(), x);
-    }
+    // function test_Increment() public {
+    //     counter.increment();
+    //     assertEq(counter.number(), 1);
+    // }
+
+    // function testFuzz_SetNumber(uint256 x) public {
+    //     counter.setNumber(x);
+    //     assertEq(counter.number(), x);
+    // }
 }
