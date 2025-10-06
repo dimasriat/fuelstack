@@ -1,4 +1,6 @@
 packages:
   - packages/*
 ignoredBuiltDependencies:
+  - '@reown/appkit'
   - esbuild
+  - secp256k1
