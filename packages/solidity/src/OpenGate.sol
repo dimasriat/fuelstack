@@ -4,8 +4,6 @@ pragma solidity ^0.8.13;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract OpenGate {
-    uint256 public number;
-
     bytes32 public constant UNKNOWN = "";
     bytes32 public constant OPENED = "OPENED";
     bytes32 public constant SETTLED = "SETTLED";
@@ -29,8 +27,8 @@ contract OpenGate {
 
     event OrderOpened(
         bytes32 indexed orderId,
+        address indexed sender,
         address indexed tokenIn,
-        address sender,
         uint256 amountIn,
         uint256 amountOut,
         address recipient,
@@ -39,10 +37,9 @@ contract OpenGate {
 
     event OrderSettled(bytes32 indexed orderId, address indexed solverRecipient);
 
-    event OrderRefunded(bytes32 indexed orderId, address indexed recipient);
+    event OrderRefunded(bytes32 indexed orderId, address indexed sender);
 
     constructor(address _trustedOracle) {
-        // Simpan trusted EOA address
         trustedOracle = _trustedOracle;
     }
 
@@ -55,6 +52,7 @@ contract OpenGate {
     ) external {
         bytes32 orderId = sha256(
             abi.encode(
+                msg.sender,      // ← ADDED: untuk uniqueness per user
                 tokenIn,
                 amountIn,
                 amountOut,
@@ -85,8 +83,8 @@ contract OpenGate {
 
         emit OrderOpened(
             orderId,
-            tokenIn,
             msg.sender,
+            tokenIn,
             amountIn,
             amountOut,
             recipient,
@@ -95,18 +93,14 @@ contract OpenGate {
     }
 
     function settle(bytes32 orderId, address solverRecipient) external {
-        // msg.sender should from the trusted EOA
         require(msg.sender == trustedOracle, "Unauthorized");
 
-        // order must be in OPENED status
         if (orderStatus[orderId] != OPENED) {
             revert("Order not in OPENED status");
         }
 
-        // update order status to SETTLED
         orderStatus[orderId] = SETTLED;
 
-        // transfer amountOut to solverRecipient
         IERC20 token = IERC20(orders[orderId].tokenIn);
         token.transfer(solverRecipient, orders[orderId].amountIn);
 
@@ -116,7 +110,12 @@ contract OpenGate {
     function refund(bytes32 orderId) external {
         Order memory order = orders[orderId];
 
-        // User hanya bisa refund setelah grace period
+        // ← ADDED: Authorization check
+        require(
+            msg.sender == order.sender || msg.sender == trustedOracle,
+            "Only sender or oracle can refund"
+        );
+
         if (block.timestamp <= order.fillDeadline + FILL_GRACE_PERIOD) {
             revert("Cannot refund yet, fill window still open");
         }
@@ -129,6 +128,6 @@ contract OpenGate {
 
         IERC20(order.tokenIn).transfer(order.sender, order.amountIn);
 
-        emit OrderRefunded(orderId, msg.sender);
+        emit OrderRefunded(orderId, order.sender);  // ← CHANGED: emit sender bukan msg.sender
     }
 }

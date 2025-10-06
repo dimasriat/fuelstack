@@ -22,6 +22,7 @@ contract FillGate {
 
     function fill(
         bytes32 orderId,
+        address sender,
         address tokenIn,
         uint256 amountIn,
         uint256 amountOut,
@@ -32,6 +33,7 @@ contract FillGate {
         // Validasi orderId harus match dengan parameter yang diberikan
         bytes32 computedOrderId = sha256(
             abi.encode(
+                sender,
                 tokenIn,
                 amountIn,
                 amountOut,
