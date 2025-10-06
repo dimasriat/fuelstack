@@ -5,6 +5,11 @@ authors = []
 telemetry = false
 cache_dir = './.cache'
 requirements = []
+[contracts.fillgate]
+path = 'contracts/fillgate.clar'
+clarity_version = 3
+epoch = 3.1
+
 [contracts.message_board-2025-10-05-15-57]
 path = 'contracts/message_board.clar'
 clarity_version = 3
