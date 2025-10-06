@@ -15,7 +15,8 @@ contract FillGate {
         address indexed tokenIn,
         uint256 amountIn,
         uint256 amountOut,
-        string recipient,
+        address recipient,
+        address solverOriginAddress,
         uint256 fillDeadline
     );
 
@@ -24,7 +25,8 @@ contract FillGate {
         address tokenIn,
         uint256 amountIn,
         uint256 amountOut,
-        string calldata recipient,
+        address recipient,
+        address solverOriginAddress,
         uint256 fillDeadline
     ) external payable {
         // Validasi orderId harus match dengan parameter yang diberikan
@@ -60,9 +62,7 @@ contract FillGate {
         orderStatus[orderId] = FILLED;
 
         // Transfer native token ke recipient
-        // Parse address dari string recipient
-        address recipientAddr = parseAddress(recipient);
-        (bool success, ) = recipientAddr.call{value: msg.value}("");
+        (bool success, ) = recipient.call{value: msg.value}("");
         if (!success) {
             revert("Transfer failed");
         }
@@ -74,34 +74,8 @@ contract FillGate {
             amountIn,
             amountOut,
             recipient,
+            solverOriginAddress,
             fillDeadline
         );
-    }
-
-    function parseAddress(string calldata addr) internal pure returns (address) {
-        bytes memory addrBytes = bytes(addr);
-        require(addrBytes.length == 42, "Invalid address length"); // "0x" + 40 chars
-        
-        bytes memory addressBytes = new bytes(20);
-        for (uint i = 0; i < 20; i++) {
-            addressBytes[i] = bytes1(
-                hexCharToByte(addrBytes[2 + i * 2]) * 16 +
-                hexCharToByte(addrBytes[3 + i * 2])
-            );
-        }
-        
-        return address(uint160(bytes20(addressBytes)));
-    }
-
-    function hexCharToByte(bytes1 char) internal pure returns (uint8) {
-        uint8 byteValue = uint8(char);
-        if (byteValue >= uint8(bytes1('0')) && byteValue <= uint8(bytes1('9'))) {
-            return byteValue - uint8(bytes1('0'));
-        } else if (byteValue >= uint8(bytes1('a')) && byteValue <= uint8(bytes1('f'))) {
-            return 10 + byteValue - uint8(bytes1('a'));
-        } else if (byteValue >= uint8(bytes1('A')) && byteValue <= uint8(bytes1('F'))) {
-            return 10 + byteValue - uint8(bytes1('A'));
-        }
-        revert("Invalid hex character");
     }
 }

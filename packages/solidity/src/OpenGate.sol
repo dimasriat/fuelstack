@@ -13,12 +13,14 @@ contract OpenGate {
 
     uint256 public constant FILL_GRACE_PERIOD = 5 minutes;
 
+    address public trustedOracle;
+
     struct Order {
         address sender;
         address tokenIn;
         uint256 amountIn;
         uint256 amountOut;
-        string recipient;
+        address recipient;
         uint256 fillDeadline;
     }
 
@@ -31,17 +33,24 @@ contract OpenGate {
         address sender,
         uint256 amountIn,
         uint256 amountOut,
-        string recipient,
+        address recipient,
         uint256 fillDeadline
     );
 
+    event OrderSettled(bytes32 indexed orderId, address indexed solverRecipient);
+
     event OrderRefunded(bytes32 indexed orderId, address indexed recipient);
+
+    constructor(address _trustedOracle) {
+        // Simpan trusted EOA address
+        trustedOracle = _trustedOracle;
+    }
 
     function open(
         address tokenIn,
         uint256 amountIn,
         uint256 amountOut,
-        string calldata recipient,
+        address recipient,
         uint256 fillDeadline
     ) external {
         bytes32 orderId = sha256(
@@ -83,6 +92,25 @@ contract OpenGate {
             recipient,
             fillDeadline
         );
+    }
+
+    function settle(bytes32 orderId, address solverRecipient) external {
+        // msg.sender should from the trusted EOA
+        require(msg.sender == trustedOracle, "Unauthorized");
+
+        // order must be in OPENED status
+        if (orderStatus[orderId] != OPENED) {
+            revert("Order not in OPENED status");
+        }
+
+        // update order status to SETTLED
+        orderStatus[orderId] = SETTLED;
+
+        // transfer amountOut to solverRecipient
+        IERC20 token = IERC20(orders[orderId].tokenIn);
+        token.transfer(solverRecipient, orders[orderId].amountIn);
+
+        emit OrderSettled(orderId, solverRecipient);
     }
 
     function refund(bytes32 orderId) external {
