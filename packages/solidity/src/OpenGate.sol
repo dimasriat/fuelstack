@@ -12,6 +12,7 @@ contract OpenGate {
     uint256 public constant FILL_GRACE_PERIOD = 5 minutes;
 
     address public trustedOracle;
+    uint256 public orderCounter;
 
     struct Order {
         address sender;
@@ -22,11 +23,11 @@ contract OpenGate {
         uint256 fillDeadline;
     }
 
-    mapping(bytes32 => bytes32) public orderStatus;
-    mapping(bytes32 => Order) public orders;
+    mapping(uint256 => bytes32) public orderStatus;
+    mapping(uint256 => Order) public orders;
 
     event OrderOpened(
-        bytes32 indexed orderId,
+        uint256 indexed orderId,
         address indexed sender,
         address indexed tokenIn,
         uint256 amountIn,
@@ -35,12 +36,13 @@ contract OpenGate {
         uint256 fillDeadline
     );
 
-    event OrderSettled(bytes32 indexed orderId, address indexed solverRecipient);
+    event OrderSettled(uint256 indexed orderId, address indexed solverRecipient);
 
-    event OrderRefunded(bytes32 indexed orderId, address indexed sender);
+    event OrderRefunded(uint256 indexed orderId, address indexed sender);
 
     constructor(address _trustedOracle) {
         trustedOracle = _trustedOracle;
+        orderCounter = 0;
     }
 
     function open(
@@ -49,17 +51,8 @@ contract OpenGate {
         uint256 amountOut,
         address recipient,
         uint256 fillDeadline
-    ) external {
-        bytes32 orderId = sha256(
-            abi.encode(
-                msg.sender,      // ← ADDED: untuk uniqueness per user
-                tokenIn,
-                amountIn,
-                amountOut,
-                recipient,
-                fillDeadline
-            )
-        );
+    ) external returns (uint256) {
+        uint256 orderId = orderCounter++;
 
         if (orderStatus[orderId] != UNKNOWN) {
             revert("Order already exists");
@@ -75,11 +68,7 @@ contract OpenGate {
             fillDeadline: fillDeadline
         });
 
-        IERC20(tokenIn).transferFrom(
-            msg.sender,
-            address(this),
-            amountIn
-        );
+        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
 
         emit OrderOpened(
             orderId,
@@ -90,9 +79,11 @@ contract OpenGate {
             recipient,
             fillDeadline
         );
+
+        return orderId;
     }
 
-    function settle(bytes32 orderId, address solverRecipient) external {
+    function settle(uint256 orderId, address solverRecipient) external {
         require(msg.sender == trustedOracle, "Unauthorized");
 
         if (orderStatus[orderId] != OPENED) {
@@ -101,16 +92,15 @@ contract OpenGate {
 
         orderStatus[orderId] = SETTLED;
 
-        IERC20 token = IERC20(orders[orderId].tokenIn);
-        token.transfer(solverRecipient, orders[orderId].amountIn);
+        Order memory order = orders[orderId];
+        IERC20(order.tokenIn).transfer(solverRecipient, order.amountIn);
 
         emit OrderSettled(orderId, solverRecipient);
     }
 
-    function refund(bytes32 orderId) external {
+    function refund(uint256 orderId) external {
         Order memory order = orders[orderId];
 
-        // ← ADDED: Authorization check
         require(
             msg.sender == order.sender || msg.sender == trustedOracle,
             "Only sender or oracle can refund"
@@ -128,6 +118,10 @@ contract OpenGate {
 
         IERC20(order.tokenIn).transfer(order.sender, order.amountIn);
 
-        emit OrderRefunded(orderId, order.sender);  // ← CHANGED: emit sender bukan msg.sender
+        emit OrderRefunded(orderId, order.sender);
+    }
+
+    function getOrder(uint256 orderId) external view returns (Order memory) {
+        return orders[orderId];
     }
 }
