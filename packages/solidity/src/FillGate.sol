@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 contract FillGate {
     bytes32 public constant UNKNOWN = "";
     bytes32 public constant FILLED = "FILLED";
@@ -12,14 +14,23 @@ contract FillGate {
     event OrderFilled(
         uint256 indexed orderId,
         address indexed solver,
+        address indexed tokenOut,
         uint256 amountOut,
         address recipient,
         address solverOriginAddress,
         uint256 fillDeadline
     );
 
+    /// @notice Fill an order with native token or ERC20
+    /// @param orderId The order ID from OpenGate
+    /// @param tokenOut Address of token to send (address(0) for native)
+    /// @param amountOut Amount to send
+    /// @param recipient Address to receive tokens
+    /// @param solverOriginAddress Solver's address on origin chain (for settlement)
+    /// @param fillDeadline Order deadline
     function fill(
         uint256 orderId,
+        address tokenOut,
         uint256 amountOut,
         address recipient,
         address solverOriginAddress,
@@ -35,23 +46,34 @@ contract FillGate {
             revert("Fill deadline exceeded");
         }
 
-        // Validasi jumlah native token yang dikirim
-        if (msg.value != amountOut) {
-            revert("Incorrect amount sent");
-        }
-
-        // Update status
+        // Update status BEFORE transfer (CEI pattern)
         orderStatus[orderId] = FILLED;
 
-        // Transfer native token ke recipient
-        (bool success, ) = recipient.call{value: msg.value}("");
-        if (!success) {
-            revert("Transfer failed");
+        // Transfer logic
+        if (tokenOut == address(0)) {
+            // Native token (ETH/gas token)
+            if (msg.value != amountOut) {
+                revert("Incorrect native amount sent");
+            }
+            
+            (bool success, ) = recipient.call{value: msg.value}("");
+            if (!success) {
+                revert("Native transfer failed");
+            }
+        } else {
+            // ERC20 token
+            if (msg.value != 0) {
+                revert("Should not send native token for ERC20 fill");
+            }
+            
+            // Transfer from solver to recipient
+            IERC20(tokenOut).transferFrom(msg.sender, recipient, amountOut);
         }
 
         emit OrderFilled(
             orderId,
             msg.sender,
+            tokenOut,
             amountOut,
             recipient,
             solverOriginAddress,

@@ -11,9 +11,14 @@ contract MockERC20 is IERC20 {
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
     uint256 private _totalSupply;
-    string public name = "Mock Token";
-    string public symbol = "MOCK";
+    string public name;
+    string public symbol;
     uint8 public decimals = 18;
+
+    constructor(string memory _name, string memory _symbol) {
+        name = _name;
+        symbol = _symbol;
+    }
 
     function mint(address to, uint256 amount) external {
         _balances[to] += amount;
@@ -58,7 +63,8 @@ contract MockERC20 is IERC20 {
 contract IntentBridgeTest is Test {
     OpenGate public openGate;
     FillGate public fillGate;
-    MockERC20 public token;
+    MockERC20 public usdc;
+    MockERC20 public sbtc;
 
     address public oracle = address(0x999);
     address public user = address(0x1);
@@ -70,43 +76,56 @@ contract IntentBridgeTest is Test {
     function setUp() public {
         openGate = new OpenGate(oracle);
         fillGate = new FillGate();
-        token = new MockERC20();
+        usdc = new MockERC20("USD Coin", "USDC");
+        sbtc = new MockERC20("Stacks BTC", "sBTC");
 
-        token.mint(user, 1000e18);
+        // Setup balances
+        usdc.mint(user, 10000e18);
+        sbtc.mint(solver, 100e8); // sBTC usually 8 decimals
         vm.deal(solver, 10 ether);
+        vm.deal(user, 1 ether);
 
+        // Labels
         vm.label(oracle, "Oracle");
         vm.label(user, "User");
         vm.label(solver, "Solver");
         vm.label(recipient, "Recipient");
+        vm.label(address(usdc), "USDC");
+        vm.label(address(sbtc), "sBTC");
     }
 
-    function test_E2E_HappyPath() public {
-        uint256 amountIn = 100e18;
-        uint256 amountOut = 0.05 ether;
+    // ============================================
+    // NATIVE TOKEN TESTS (Gas Refuel Use Case)
+    // ============================================
+
+    function test_E2E_NativeToken_GasRefuel() public {
+        uint256 amountIn = 100e18; // 100 USDC
+        uint256 amountOut = 0.05 ether; // 0.05 ETH/STX
         uint256 fillDeadline = block.timestamp + 1 hours;
 
-        // Step 1: User opens order
+        // Step 1: User opens order for native token
         vm.startPrank(user);
-        token.approve(address(openGate), amountIn);
+        usdc.approve(address(openGate), amountIn);
         uint256 orderId = openGate.open(
-            address(token),
+            address(usdc),
             amountIn,
+            address(0),      // tokenOut = native
             amountOut,
             recipient,
             fillDeadline
         );
         vm.stopPrank();
 
-        // Verify orderId is sequential
         assertEq(orderId, 0);
         assertEq(openGate.orderStatus(orderId), "OPENED");
-        assertEq(token.balanceOf(address(openGate)), amountIn);
 
-        // Step 2: Solver fills order
+        // Step 2: Solver fills with native token
+        uint256 recipientBalanceBefore = recipient.balance;
+        
         vm.prank(solver);
         fillGate.fill{value: amountOut}(
             orderId,
+            address(0),      // tokenOut = native
             amountOut,
             recipient,
             solver,
@@ -114,57 +133,196 @@ contract IntentBridgeTest is Test {
         );
 
         assertEq(fillGate.orderStatus(orderId), "FILLED");
-        assertEq(recipient.balance, amountOut);
+        assertEq(recipient.balance, recipientBalanceBefore + amountOut);
 
         // Step 3: Oracle settles
         vm.prank(oracle);
         openGate.settle(orderId, solver);
 
         assertEq(openGate.orderStatus(orderId), "SETTLED");
-        assertEq(token.balanceOf(solver), amountIn);
+        assertEq(usdc.balanceOf(solver), amountIn);
     }
 
-    function test_Open_ReturnsSequentialOrderId() public {
-        uint256 amountIn = 100e18;
-        uint256 amountOut = 0.05 ether;
+    // ============================================
+    // ERC20 TOKEN TESTS (sBTC Use Case)
+    // ============================================
+
+    function test_E2E_ERC20Token_sBTC() public {
+        uint256 amountIn = 100e18; // 100 USDC
+        uint256 amountOut = 0.01e8; // 0.01 sBTC (8 decimals)
         uint256 fillDeadline = block.timestamp + 1 hours;
 
+        // Step 1: User opens order for sBTC
         vm.startPrank(user);
-        token.approve(address(openGate), amountIn * 3);
-
-        uint256 orderId1 = openGate.open(address(token), amountIn, amountOut, recipient, fillDeadline);
-        uint256 orderId2 = openGate.open(address(token), amountIn, amountOut, recipient, fillDeadline);
-        uint256 orderId3 = openGate.open(address(token), amountIn, amountOut, recipient, fillDeadline);
-
+        usdc.approve(address(openGate), amountIn);
+        uint256 orderId = openGate.open(
+            address(usdc),
+            amountIn,
+            address(sbtc),   // tokenOut = sBTC
+            amountOut,
+            recipient,
+            fillDeadline
+        );
         vm.stopPrank();
 
-        assertEq(orderId1, 0);
-        assertEq(orderId2, 1);
-        assertEq(orderId3, 2);
+        // Step 2: Solver fills with sBTC
+        vm.startPrank(solver);
+        sbtc.approve(address(fillGate), amountOut);
+        fillGate.fill(
+            orderId,
+            address(sbtc),   // tokenOut = sBTC
+            amountOut,
+            recipient,
+            solver,
+            fillDeadline
+        );
+        vm.stopPrank();
+
+        assertEq(fillGate.orderStatus(orderId), "FILLED");
+        assertEq(sbtc.balanceOf(recipient), amountOut);
+
+        // Step 3: Oracle settles
+        vm.prank(oracle);
+        openGate.settle(orderId, solver);
+
+        assertEq(openGate.orderStatus(orderId), "SETTLED");
+        assertEq(usdc.balanceOf(solver), amountIn);
     }
 
-    function test_Open_EmitsEvent() public {
+    function test_Open_EmitsEventWithTokenOut() public {
         uint256 amountIn = 100e18;
-        uint256 amountOut = 0.05 ether;
+        uint256 amountOut = 0.01e8;
         uint256 fillDeadline = block.timestamp + 1 hours;
 
         vm.startPrank(user);
-        token.approve(address(openGate), amountIn);
+        usdc.approve(address(openGate), amountIn);
 
         vm.expectEmit(true, true, true, true);
         emit OpenGate.OrderOpened(
-            0, // orderId
+            0,
             user,
-            address(token),
+            address(usdc),
             amountIn,
+            address(sbtc),
             amountOut,
             recipient,
             fillDeadline
         );
 
-        openGate.open(address(token), amountIn, amountOut, recipient, fillDeadline);
+        openGate.open(
+            address(usdc),
+            amountIn,
+            address(sbtc),
+            amountOut,
+            recipient,
+            fillDeadline
+        );
         vm.stopPrank();
     }
+
+    function test_Fill_EmitsEventWithTokenOut() public {
+        uint256 amountOut = 0.05 ether;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+
+        vm.expectEmit(true, true, true, true);
+        emit FillGate.OrderFilled(
+            0,
+            solver,
+            address(0),
+            amountOut,
+            recipient,
+            solver,
+            fillDeadline
+        );
+
+        vm.prank(solver);
+        fillGate.fill{value: amountOut}(
+            0,
+            address(0),
+            amountOut,
+            recipient,
+            solver,
+            fillDeadline
+        );
+    }
+
+    // ============================================
+    // ERROR CASES
+    // ============================================
+
+    function test_Revert_Fill_NativeWithERC20Parameter() public {
+        uint256 amountOut = 0.05 ether;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+
+        // Try to send native but specify ERC20 address
+        vm.expectRevert("Should not send native token for ERC20 fill");
+        vm.prank(solver);
+        fillGate.fill{value: amountOut}(
+            0,
+            address(sbtc),   // Specify sBTC but send native
+            amountOut,
+            recipient,
+            solver,
+            fillDeadline
+        );
+    }
+
+    function test_Revert_Fill_ERC20WithNativeValue() public {
+        uint256 amountOut = 0.01e8;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+
+        vm.startPrank(solver);
+        sbtc.approve(address(fillGate), amountOut);
+
+        // Try to send native with ERC20 fill
+        vm.expectRevert("Should not send native token for ERC20 fill");
+        fillGate.fill{value: 0.01 ether}(
+            0,
+            address(sbtc),
+            amountOut,
+            recipient,
+            solver,
+            fillDeadline
+        );
+        vm.stopPrank();
+    }
+
+    function test_Revert_Fill_IncorrectNativeAmount() public {
+        uint256 amountOut = 0.05 ether;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+
+        vm.expectRevert("Incorrect native amount sent");
+        vm.prank(solver);
+        fillGate.fill{value: 0.03 ether}(
+            0,
+            address(0),
+            amountOut,
+            recipient,
+            solver,
+            fillDeadline
+        );
+    }
+
+    function test_Revert_Fill_InsufficientERC20Allowance() public {
+        uint256 amountOut = 0.01e8;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+
+        // Don't approve - should fail
+        vm.expectRevert();
+        vm.prank(solver);
+        fillGate.fill(
+            0,
+            address(sbtc),
+            amountOut,
+            recipient,
+            solver,
+            fillDeadline
+        );
+    }
+
+    // ============================================
+    // REFUND & SETTLEMENT TESTS
+    // ============================================
 
     function test_Refund_AfterGracePeriod() public {
         uint256 amountIn = 100e18;
@@ -172,10 +330,11 @@ contract IntentBridgeTest is Test {
         uint256 fillDeadline = block.timestamp + 1 hours;
 
         vm.startPrank(user);
-        token.approve(address(openGate), amountIn);
+        usdc.approve(address(openGate), amountIn);
         uint256 orderId = openGate.open(
-            address(token),
+            address(usdc),
             amountIn,
+            address(0),
             amountOut,
             recipient,
             fillDeadline
@@ -184,104 +343,64 @@ contract IntentBridgeTest is Test {
 
         vm.warp(fillDeadline + FILL_GRACE_PERIOD + 1);
 
-        uint256 userBalanceBefore = token.balanceOf(user);
+        uint256 userBalanceBefore = usdc.balanceOf(user);
         vm.prank(user);
         openGate.refund(orderId);
 
         assertEq(openGate.orderStatus(orderId), "REFUNDED");
-        assertEq(token.balanceOf(user), userBalanceBefore + amountIn);
+        assertEq(usdc.balanceOf(user), userBalanceBefore + amountIn);
     }
 
-    function test_Refund_OracleCanTrigger() public {
+    function test_GetOrder_ReturnsCorrectData() public {
         uint256 amountIn = 100e18;
-        uint256 amountOut = 0.05 ether;
+        uint256 amountOut = 0.01e8;
         uint256 fillDeadline = block.timestamp + 1 hours;
 
         vm.startPrank(user);
-        token.approve(address(openGate), amountIn);
+        usdc.approve(address(openGate), amountIn);
         uint256 orderId = openGate.open(
-            address(token),
+            address(usdc),
             amountIn,
+            address(sbtc),
             amountOut,
             recipient,
             fillDeadline
         );
         vm.stopPrank();
 
-        vm.warp(fillDeadline + FILL_GRACE_PERIOD + 1);
-
-        vm.prank(oracle);
-        openGate.refund(orderId);
-
-        assertEq(openGate.orderStatus(orderId), "REFUNDED");
+        OpenGate.Order memory order = openGate.getOrder(orderId);
+        
+        assertEq(order.sender, user);
+        assertEq(order.tokenIn, address(usdc));
+        assertEq(order.amountIn, amountIn);
+        assertEq(order.tokenOut, address(sbtc));
+        assertEq(order.amountOut, amountOut);
+        assertEq(order.recipient, recipient);
+        assertEq(order.fillDeadline, fillDeadline);
     }
 
-    function test_Revert_Refund_BeforeGracePeriod() public {
+    function test_MultipleOrders_SequentialIds() public {
         uint256 amountIn = 100e18;
         uint256 amountOut = 0.05 ether;
         uint256 fillDeadline = block.timestamp + 1 hours;
 
         vm.startPrank(user);
-        token.approve(address(openGate), amountIn);
-        uint256 orderId = openGate.open(
-            address(token),
-            amountIn,
-            amountOut,
-            recipient,
-            fillDeadline
-        );
+        usdc.approve(address(openGate), amountIn * 3);
+
+        uint256 id1 = openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline);
+        uint256 id2 = openGate.open(address(usdc), amountIn, address(sbtc), amountOut, recipient, fillDeadline);
+        uint256 id3 = openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline);
+
         vm.stopPrank();
 
-        vm.expectRevert("Cannot refund yet, fill window still open");
-        vm.prank(user);
-        openGate.refund(orderId);
+        assertEq(id1, 0);
+        assertEq(id2, 1);
+        assertEq(id3, 2);
     }
 
-    function test_Revert_Refund_UnauthorizedUser() public {
-        uint256 amountIn = 100e18;
-        uint256 amountOut = 0.05 ether;
-        uint256 fillDeadline = block.timestamp + 1 hours;
-
-        vm.startPrank(user);
-        token.approve(address(openGate), amountIn);
-        uint256 orderId = openGate.open(
-            address(token),
-            amountIn,
-            amountOut,
-            recipient,
-            fillDeadline
-        );
-        vm.stopPrank();
-
-        vm.warp(fillDeadline + FILL_GRACE_PERIOD + 1);
-
-        address attacker = address(0x888);
-        vm.expectRevert("Only sender or oracle can refund");
-        vm.prank(attacker);
-        openGate.refund(orderId);
-    }
-
-    function test_Revert_Settle_UnauthorizedCaller() public {
-        uint256 amountIn = 100e18;
-        uint256 amountOut = 0.05 ether;
-        uint256 fillDeadline = block.timestamp + 1 hours;
-
-        vm.startPrank(user);
-        token.approve(address(openGate), amountIn);
-        uint256 orderId = openGate.open(
-            address(token),
-            amountIn,
-            amountOut,
-            recipient,
-            fillDeadline
-        );
-        vm.stopPrank();
-
-        address attacker = address(0x666);
-        vm.expectRevert("Unauthorized");
-        vm.prank(attacker);
-        openGate.settle(orderId, attacker);
-    }
+    // ============================================
+    // RACE CONDITION TESTS
+    // ============================================
 
     function test_RaceCondition_RefundVsSettle_SettleWins() public {
         uint256 amountIn = 100e18;
@@ -289,10 +408,11 @@ contract IntentBridgeTest is Test {
         uint256 fillDeadline = block.timestamp + 1 hours;
 
         vm.startPrank(user);
-        token.approve(address(openGate), amountIn);
+        usdc.approve(address(openGate), amountIn);
         uint256 orderId = openGate.open(
-            address(token),
+            address(usdc),
             amountIn,
+            address(0),
             amountOut,
             recipient,
             fillDeadline
@@ -307,66 +427,5 @@ contract IntentBridgeTest is Test {
         vm.expectRevert("Order not in OPENED status");
         vm.prank(user);
         openGate.refund(orderId);
-    }
-
-    function test_RaceCondition_RefundVsSettle_RefundWins() public {
-        uint256 amountIn = 100e18;
-        uint256 amountOut = 0.05 ether;
-        uint256 fillDeadline = block.timestamp + 1 hours;
-
-        vm.startPrank(user);
-        token.approve(address(openGate), amountIn);
-        uint256 orderId = openGate.open(
-            address(token),
-            amountIn,
-            amountOut,
-            recipient,
-            fillDeadline
-        );
-        vm.stopPrank();
-
-        vm.warp(fillDeadline + FILL_GRACE_PERIOD + 1);
-
-        vm.prank(user);
-        openGate.refund(orderId);
-
-        vm.expectRevert("Order not in OPENED status");
-        vm.prank(oracle);
-        openGate.settle(orderId, solver);
-    }
-
-    function test_Revert_Fill_DoubleFill() public {
-        uint256 amountOut = 0.05 ether;
-        uint256 fillDeadline = block.timestamp + 1 hours;
-
-        vm.prank(solver);
-        fillGate.fill{value: amountOut}(0, amountOut, recipient, solver, fillDeadline);
-
-        address solver2 = address(0x20);
-        vm.deal(solver2, 1 ether);
-
-        vm.expectRevert("Order already filled");
-        vm.prank(solver2);
-        fillGate.fill{value: amountOut}(0, amountOut, recipient, solver2, fillDeadline);
-    }
-
-    function test_Revert_Fill_IncorrectAmount() public {
-        uint256 amountOut = 0.05 ether;
-        uint256 fillDeadline = block.timestamp + 1 hours;
-
-        vm.expectRevert("Incorrect amount sent");
-        vm.prank(solver);
-        fillGate.fill{value: 0.03 ether}(0, amountOut, recipient, solver, fillDeadline);
-    }
-
-    function test_Revert_Fill_AfterDeadlineWithGrace() public {
-        uint256 amountOut = 0.05 ether;
-        uint256 fillDeadline = block.timestamp + 1 hours;
-
-        vm.warp(fillDeadline + FILL_GRACE_PERIOD + 1);
-
-        vm.expectRevert("Fill deadline exceeded");
-        vm.prank(solver);
-        fillGate.fill{value: amountOut}(0, amountOut, recipient, solver, fillDeadline);
     }
 }

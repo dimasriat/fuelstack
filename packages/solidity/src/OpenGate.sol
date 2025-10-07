@@ -18,6 +18,7 @@ contract OpenGate {
         address sender;
         address tokenIn;
         uint256 amountIn;
+        address tokenOut;        // ← NEW: destination token
         uint256 amountOut;
         address recipient;
         uint256 fillDeadline;
@@ -31,6 +32,7 @@ contract OpenGate {
         address indexed sender,
         address indexed tokenIn,
         uint256 amountIn,
+        address tokenOut,        // ← NEW
         uint256 amountOut,
         address recipient,
         uint256 fillDeadline
@@ -45,9 +47,18 @@ contract OpenGate {
         orderCounter = 0;
     }
 
+    /// @notice Open a new cross-chain order
+    /// @param tokenIn Token to lock on origin chain
+    /// @param amountIn Amount to lock
+    /// @param tokenOut Token to receive on destination chain (address(0) for native)
+    /// @param amountOut Amount to receive on destination
+    /// @param recipient Address to receive tokens on destination chain
+    /// @param fillDeadline Deadline for solver to fill
+    /// @return orderId The sequential order ID
     function open(
         address tokenIn,
         uint256 amountIn,
+        address tokenOut,
         uint256 amountOut,
         address recipient,
         uint256 fillDeadline
@@ -63,6 +74,7 @@ contract OpenGate {
             sender: msg.sender,
             tokenIn: tokenIn,
             amountIn: amountIn,
+            tokenOut: tokenOut,
             amountOut: amountOut,
             recipient: recipient,
             fillDeadline: fillDeadline
@@ -75,6 +87,7 @@ contract OpenGate {
             msg.sender,
             tokenIn,
             amountIn,
+            tokenOut,
             amountOut,
             recipient,
             fillDeadline
@@ -83,6 +96,9 @@ contract OpenGate {
         return orderId;
     }
 
+    /// @notice Settle a filled order (only callable by oracle)
+    /// @param orderId The order ID to settle
+    /// @param solverRecipient Address to send locked tokens to (solver's address on origin chain)
     function settle(uint256 orderId, address solverRecipient) external {
         require(msg.sender == trustedOracle, "Unauthorized");
 
@@ -98,6 +114,8 @@ contract OpenGate {
         emit OrderSettled(orderId, solverRecipient);
     }
 
+    /// @notice Refund an unfilled order after grace period
+    /// @param orderId The order ID to refund
     function refund(uint256 orderId) external {
         Order memory order = orders[orderId];
 
@@ -121,6 +139,7 @@ contract OpenGate {
         emit OrderRefunded(orderId, order.sender);
     }
 
+    /// @notice Get order details
     function getOrder(uint256 orderId) external view returns (Order memory) {
         return orders[orderId];
     }
