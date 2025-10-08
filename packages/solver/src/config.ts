@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { Address } from 'viem';
 
 dotenv.config();
 
@@ -42,14 +43,14 @@ export const EXPLORER_URLS = {
 
 // Source Chain: Arbitrum Sepolia
 export const SOURCE_CONTRACTS = {
-  openGate: '0xc2287A4DF839A6ca7B97202178914208BD1B18E2',
-  usdc: '0x3Ea1d18c1e29F0b18E3cAD01CFd62456Dbb04fe9',
+  openGate: '0xc2287A4DF839A6ca7B97202178914208BD1B18E2' as Address,
+  usdc: '0x3Ea1d18c1e29F0b18E3cAD01CFd62456Dbb04fe9' as Address,
 };
 
 // Destination Chain: Base Sepolia  
 export const DESTINATION_CONTRACTS = {
-  fillGate: '0xe151FE7360B77973133E2d3D1A0B47A386Ba43Cf',
-  sbtc: '0x3449353C85500Ee971eE64b193D15eF39BF01f04',
+  fillGate: '0xe151FE7360B77973133E2d3D1A0B47A386Ba43Cf' as Address,
+  sbtc: '0x3449353C85500Ee971eE64b193D15eF39BF01f04' as Address,
 };
 
 // ============================================

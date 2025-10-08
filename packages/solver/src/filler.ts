@@ -1,4 +1,4 @@
-import { getAddress, toHex } from 'viem';
+import { Address, getAddress, toHex } from 'viem';
 import { 
   createPublicClientForChain, 
   createWalletClientForChain,
@@ -153,7 +153,7 @@ export class OrderFiller {
         address: sbtcAddress,
         abi: ERC20_ABI,
         functionName: 'allowance',
-        args: [this.destWalletClient.account.address, fillGateAddress]
+        args: [this.destWalletClient.account.address, fillGateAddress as Address]
       });
 
       if (allowance < amountOut) {
@@ -162,7 +162,7 @@ export class OrderFiller {
           address: sbtcAddress,
           abi: ERC20_ABI,
           functionName: 'approve',
-          args: [fillGateAddress, amountOut]
+          args: [fillGateAddress as Address, amountOut]
         });
         
         const approvalReceipt = await this.destPublicClient.waitForTransactionReceipt({ hash: approveTx });
