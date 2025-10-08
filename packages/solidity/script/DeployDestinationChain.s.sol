@@ -66,19 +66,34 @@ contract DeployDestinationChain is Script {
 
     function setupSupportedChains() internal {
         // Add Arbitrum Sepolia as source
-        fillGate.addChain(421614, "Arbitrum Sepolia", 300); // 5 minutes grace period
-        fillGate.activateChain(421614);
-        console.log("Added Arbitrum Sepolia (421614) as source");
+        addChainIfNotExists(421614, "Arbitrum Sepolia", 300);
 
         // Add Base Sepolia as source
-        fillGate.addChain(84532, "Base Sepolia", 600); // 10 minutes grace period  
-        fillGate.activateChain(84532);
-        console.log("Added Base Sepolia (84532) as source");
+        addChainIfNotExists(84532, "Base Sepolia", 600);
 
         // Add Ethereum Sepolia for testing
-        fillGate.addChain(11155111, "Ethereum Sepolia", 900); // 15 minutes grace period
-        fillGate.activateChain(11155111);
-        console.log("Added Ethereum Sepolia (11155111) as source");
+        addChainIfNotExists(11155111, "Ethereum Sepolia", 900);
+    }
+
+    function addChainIfNotExists(uint256 chainId, string memory name, uint256 gracePeriod) internal {
+        // Check if chain already exists
+        (bool isSupported,,,) = fillGate.chainConfigs(chainId);
+        
+        if (!isSupported) {
+            fillGate.addChain(chainId, name, gracePeriod);
+            console.log("Added source chain:", name);
+            console.log("Chain ID:", chainId);
+        } else {
+            console.log("Source chain already exists:", name);
+            console.log("Chain ID:", chainId);
+        }
+        
+        // Ensure chain is activated
+        (,, , bool isActive) = fillGate.chainConfigs(chainId);
+        if (!isActive) {
+            fillGate.activateChain(chainId);
+            console.log("Activated source chain:", name);
+        }
     }
 
     function setupRoles() internal {

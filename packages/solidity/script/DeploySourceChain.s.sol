@@ -66,19 +66,34 @@ contract DeploySourceChain is Script {
 
     function setupSupportedChains() internal {
         // Add Arbitrum Sepolia
-        chainRegistry.addChain(421614, "Arbitrum Sepolia", 300); // 5 minutes grace period
-        chainRegistry.activateChain(421614);
-        console.log("Added Arbitrum Sepolia (421614)");
+        addChainIfNotExists(421614, "Arbitrum Sepolia", 300);
 
         // Add Base Sepolia  
-        chainRegistry.addChain(84532, "Base Sepolia", 600); // 10 minutes grace period
-        chainRegistry.activateChain(84532);
-        console.log("Added Base Sepolia (84532)");
+        addChainIfNotExists(84532, "Base Sepolia", 600);
 
         // Add Ethereum Sepolia for testing
-        chainRegistry.addChain(11155111, "Ethereum Sepolia", 900); // 15 minutes grace period
-        chainRegistry.activateChain(11155111);
-        console.log("Added Ethereum Sepolia (11155111)");
+        addChainIfNotExists(11155111, "Ethereum Sepolia", 900);
+    }
+
+    function addChainIfNotExists(uint256 chainId, string memory name, uint256 gracePeriod) internal {
+        // Check if chain already exists
+        (bool isSupported,,,) = chainRegistry.chainConfigs(chainId);
+        
+        if (!isSupported) {
+            chainRegistry.addChain(chainId, name, gracePeriod);
+            console.log("Added chain:", name);
+            console.log("Chain ID:", chainId);
+        } else {
+            console.log("Chain already exists:", name);
+            console.log("Chain ID:", chainId);
+        }
+        
+        // Ensure chain is activated
+        (,, , bool isActive) = chainRegistry.chainConfigs(chainId);
+        if (!isActive) {
+            chainRegistry.activateChain(chainId);
+            console.log("Activated chain:", name);
+        }
     }
 
     function mintTestTokens() internal {
