@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {Test, console} from "forge-std/Test.sol";
 import {OpenGate} from "../src/OpenGate.sol";
 import {FillGate} from "../src/FillGate.sol";
+import {ChainRegistry} from "../src/ChainRegistry.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Mock ERC20 token
@@ -63,6 +64,7 @@ contract MockERC20 is IERC20 {
 contract IntentBridgeTest is Test {
     OpenGate public openGate;
     FillGate public fillGate;
+    ChainRegistry public chainRegistry;
     MockERC20 public usdc;
     MockERC20 public sbtc;
 
@@ -72,12 +74,31 @@ contract IntentBridgeTest is Test {
     address public recipient = address(0x3);
 
     uint256 constant FILL_GRACE_PERIOD = 5 minutes;
+    uint256 constant ETHEREUM_CHAIN_ID = 1;
+    uint256 constant POLYGON_CHAIN_ID = 137;
+    uint256 constant CURRENT_CHAIN_ID = 31337; // Foundry default
 
     function setUp() public {
-        openGate = new OpenGate(oracle);
-        fillGate = new FillGate();
+        // Deploy chain registry first
+        chainRegistry = new ChainRegistry(oracle);
+
+        // Add test chains
+        vm.startPrank(oracle);
+        chainRegistry.addChain(ETHEREUM_CHAIN_ID, "Ethereum", 10 minutes);
+        chainRegistry.addChain(POLYGON_CHAIN_ID, "Polygon", 3 minutes);
+        vm.stopPrank();
+
+        // Deploy contracts
+        openGate = new OpenGate(oracle, address(chainRegistry));
+        fillGate = new FillGate(oracle); // Now takes admin address directly
         usdc = new MockERC20("USD Coin", "USDC");
         sbtc = new MockERC20("Stacks BTC", "sBTC");
+
+        // Add test chains to FillGate's embedded chain management
+        vm.startPrank(oracle);
+        fillGate.addChain(ETHEREUM_CHAIN_ID, "Ethereum", 10 minutes);
+        fillGate.addChain(POLYGON_CHAIN_ID, "Polygon", 3 minutes);
+        vm.stopPrank();
 
         // Setup balances
         usdc.mint(user, 10000e18);
@@ -109,10 +130,11 @@ contract IntentBridgeTest is Test {
         uint256 orderId = openGate.open(
             address(usdc),
             amountIn,
-            address(0),      // tokenOut = native
+            address(0), // tokenOut = native
             amountOut,
             recipient,
-            fillDeadline
+            fillDeadline,
+            ETHEREUM_CHAIN_ID // sourceChainId
         );
         vm.stopPrank();
 
@@ -121,15 +143,16 @@ contract IntentBridgeTest is Test {
 
         // Step 2: Solver fills with native token
         uint256 recipientBalanceBefore = recipient.balance;
-        
+
         vm.prank(solver);
         fillGate.fill{value: amountOut}(
             orderId,
-            address(0),      // tokenOut = native
+            address(0), // tokenOut = native
             amountOut,
             recipient,
             solver,
-            fillDeadline
+            fillDeadline,
+            ETHEREUM_CHAIN_ID // sourceChainId
         );
 
         assertEq(fillGate.orderStatus(orderId), "FILLED");
@@ -158,10 +181,11 @@ contract IntentBridgeTest is Test {
         uint256 orderId = openGate.open(
             address(usdc),
             amountIn,
-            address(sbtc),   // tokenOut = sBTC
+            address(sbtc), // tokenOut = sBTC
             amountOut,
             recipient,
-            fillDeadline
+            fillDeadline,
+            POLYGON_CHAIN_ID // sourceChainId (different chain)
         );
         vm.stopPrank();
 
@@ -170,11 +194,12 @@ contract IntentBridgeTest is Test {
         sbtc.approve(address(fillGate), amountOut);
         fillGate.fill(
             orderId,
-            address(sbtc),   // tokenOut = sBTC
+            address(sbtc), // tokenOut = sBTC
             amountOut,
             recipient,
             solver,
-            fillDeadline
+            fillDeadline,
+            POLYGON_CHAIN_ID // sourceChainId (different chain)
         );
         vm.stopPrank();
 
@@ -199,24 +224,10 @@ contract IntentBridgeTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit OpenGate.OrderOpened(
-            0,
-            user,
-            address(usdc),
-            amountIn,
-            address(sbtc),
-            amountOut,
-            recipient,
-            fillDeadline
+            0, user, address(usdc), amountIn, address(sbtc), amountOut, recipient, fillDeadline, CURRENT_CHAIN_ID
         );
 
-        openGate.open(
-            address(usdc),
-            amountIn,
-            address(sbtc),
-            amountOut,
-            recipient,
-            fillDeadline
-        );
+        openGate.open(address(usdc), amountIn, address(sbtc), amountOut, recipient, fillDeadline, CURRENT_CHAIN_ID);
         vm.stopPrank();
     }
 
@@ -225,25 +236,10 @@ contract IntentBridgeTest is Test {
         uint256 fillDeadline = block.timestamp + 1 hours;
 
         vm.expectEmit(true, true, true, true);
-        emit FillGate.OrderFilled(
-            0,
-            solver,
-            address(0),
-            amountOut,
-            recipient,
-            solver,
-            fillDeadline
-        );
+        emit FillGate.OrderFilled(0, solver, address(0), amountOut, recipient, solver, fillDeadline, CURRENT_CHAIN_ID);
 
         vm.prank(solver);
-        fillGate.fill{value: amountOut}(
-            0,
-            address(0),
-            amountOut,
-            recipient,
-            solver,
-            fillDeadline
-        );
+        fillGate.fill{value: amountOut}(0, address(0), amountOut, recipient, solver, fillDeadline, CURRENT_CHAIN_ID);
     }
 
     // ============================================
@@ -259,11 +255,12 @@ contract IntentBridgeTest is Test {
         vm.prank(solver);
         fillGate.fill{value: amountOut}(
             0,
-            address(sbtc),   // Specify sBTC but send native
+            address(sbtc), // Specify sBTC but send native
             amountOut,
             recipient,
             solver,
-            fillDeadline
+            fillDeadline,
+            CURRENT_CHAIN_ID
         );
     }
 
@@ -276,14 +273,7 @@ contract IntentBridgeTest is Test {
 
         // Try to send native with ERC20 fill
         vm.expectRevert("Should not send native token for ERC20 fill");
-        fillGate.fill{value: 0.01 ether}(
-            0,
-            address(sbtc),
-            amountOut,
-            recipient,
-            solver,
-            fillDeadline
-        );
+        fillGate.fill{value: 0.01 ether}(0, address(sbtc), amountOut, recipient, solver, fillDeadline, CURRENT_CHAIN_ID);
         vm.stopPrank();
     }
 
@@ -293,14 +283,7 @@ contract IntentBridgeTest is Test {
 
         vm.expectRevert("Incorrect native amount sent");
         vm.prank(solver);
-        fillGate.fill{value: 0.03 ether}(
-            0,
-            address(0),
-            amountOut,
-            recipient,
-            solver,
-            fillDeadline
-        );
+        fillGate.fill{value: 0.03 ether}(0, address(0), amountOut, recipient, solver, fillDeadline, CURRENT_CHAIN_ID);
     }
 
     function test_Revert_Fill_InsufficientERC20Allowance() public {
@@ -310,14 +293,7 @@ contract IntentBridgeTest is Test {
         // Don't approve - should fail
         vm.expectRevert();
         vm.prank(solver);
-        fillGate.fill(
-            0,
-            address(sbtc),
-            amountOut,
-            recipient,
-            solver,
-            fillDeadline
-        );
+        fillGate.fill(0, address(sbtc), amountOut, recipient, solver, fillDeadline, CURRENT_CHAIN_ID);
     }
 
     // ============================================
@@ -337,11 +313,12 @@ contract IntentBridgeTest is Test {
             address(0),
             amountOut,
             recipient,
-            fillDeadline
+            fillDeadline,
+            ETHEREUM_CHAIN_ID // Use Ethereum chain with 10 minute grace period
         );
         vm.stopPrank();
 
-        vm.warp(fillDeadline + FILL_GRACE_PERIOD + 1);
+        vm.warp(fillDeadline + 10 minutes + 1); // Use Ethereum grace period
 
         uint256 userBalanceBefore = usdc.balanceOf(user);
         vm.prank(user);
@@ -358,18 +335,12 @@ contract IntentBridgeTest is Test {
 
         vm.startPrank(user);
         usdc.approve(address(openGate), amountIn);
-        uint256 orderId = openGate.open(
-            address(usdc),
-            amountIn,
-            address(sbtc),
-            amountOut,
-            recipient,
-            fillDeadline
-        );
+        uint256 orderId =
+            openGate.open(address(usdc), amountIn, address(sbtc), amountOut, recipient, fillDeadline, CURRENT_CHAIN_ID);
         vm.stopPrank();
 
         OpenGate.Order memory order = openGate.getOrder(orderId);
-        
+
         assertEq(order.sender, user);
         assertEq(order.tokenIn, address(usdc));
         assertEq(order.amountIn, amountIn);
@@ -377,6 +348,7 @@ contract IntentBridgeTest is Test {
         assertEq(order.amountOut, amountOut);
         assertEq(order.recipient, recipient);
         assertEq(order.fillDeadline, fillDeadline);
+        assertEq(order.sourceChainId, CURRENT_CHAIN_ID);
     }
 
     function test_MultipleOrders_SequentialIds() public {
@@ -387,9 +359,12 @@ contract IntentBridgeTest is Test {
         vm.startPrank(user);
         usdc.approve(address(openGate), amountIn * 3);
 
-        uint256 id1 = openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline);
-        uint256 id2 = openGate.open(address(usdc), amountIn, address(sbtc), amountOut, recipient, fillDeadline);
-        uint256 id3 = openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline);
+        uint256 id1 =
+            openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline, CURRENT_CHAIN_ID);
+        uint256 id2 =
+            openGate.open(address(usdc), amountIn, address(sbtc), amountOut, recipient, fillDeadline, ETHEREUM_CHAIN_ID);
+        uint256 id3 =
+            openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline, POLYGON_CHAIN_ID);
 
         vm.stopPrank();
 
@@ -409,14 +384,8 @@ contract IntentBridgeTest is Test {
 
         vm.startPrank(user);
         usdc.approve(address(openGate), amountIn);
-        uint256 orderId = openGate.open(
-            address(usdc),
-            amountIn,
-            address(0),
-            amountOut,
-            recipient,
-            fillDeadline
-        );
+        uint256 orderId =
+            openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline, CURRENT_CHAIN_ID);
         vm.stopPrank();
 
         vm.warp(fillDeadline + FILL_GRACE_PERIOD + 1);
@@ -427,5 +396,113 @@ contract IntentBridgeTest is Test {
         vm.expectRevert("Order not in OPENED status");
         vm.prank(user);
         openGate.refund(orderId);
+    }
+
+    // ============================================
+    // MULTI-CHAIN SPECIFIC TESTS
+    // ============================================
+
+    function test_MultiChain_DifferentGracePeriods() public {
+        uint256 amountIn = 100e18;
+        uint256 amountOut = 0.05 ether;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+
+        // Create order from Ethereum (10 min grace period)
+        vm.startPrank(user);
+        usdc.approve(address(openGate), amountIn * 2);
+        uint256 ethOrderId =
+            openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline, ETHEREUM_CHAIN_ID);
+
+        // Create order from Polygon (3 min grace period)
+        uint256 polyOrderId =
+            openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline, POLYGON_CHAIN_ID);
+        vm.stopPrank();
+
+        // Warp to after Polygon grace period but before Ethereum grace period
+        vm.warp(fillDeadline + 5 minutes);
+
+        // Polygon order should be refundable
+        vm.prank(user);
+        openGate.refund(polyOrderId);
+        assertEq(openGate.orderStatus(polyOrderId), "REFUNDED");
+
+        // Ethereum order should NOT be refundable yet
+        vm.expectRevert("Cannot refund yet, fill window still open");
+        vm.prank(user);
+        openGate.refund(ethOrderId);
+
+        // Warp past Ethereum grace period
+        vm.warp(fillDeadline + 11 minutes);
+
+        // Now Ethereum order should be refundable
+        vm.prank(user);
+        openGate.refund(ethOrderId);
+        assertEq(openGate.orderStatus(ethOrderId), "REFUNDED");
+    }
+
+    function test_MultiChain_InvalidChain() public {
+        uint256 amountIn = 100e18;
+        uint256 amountOut = 0.05 ether;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+        uint256 invalidChainId = 999999;
+
+        vm.startPrank(user);
+        usdc.approve(address(openGate), amountIn);
+
+        vm.expectRevert("Invalid or inactive source chain");
+        openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline, invalidChainId);
+        vm.stopPrank();
+    }
+
+    function test_MultiChain_FillWithWrongChain() public {
+        uint256 amountOut = 0.05 ether;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+        uint256 wrongChainId = 999999;
+
+        vm.expectRevert("Invalid or inactive source chain");
+        vm.prank(solver);
+        fillGate.fill{value: amountOut}(0, address(0), amountOut, recipient, solver, fillDeadline, wrongChainId);
+    }
+
+    function test_MultiChain_ChainDeactivation() public {
+        uint256 amountIn = 100e18;
+        uint256 amountOut = 0.05 ether;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+
+        // Deactivate Ethereum chain in both places
+        vm.startPrank(oracle);
+        chainRegistry.deactivateChain(ETHEREUM_CHAIN_ID);
+        fillGate.deactivateChain(ETHEREUM_CHAIN_ID);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        usdc.approve(address(openGate), amountIn);
+
+        vm.expectRevert("Invalid or inactive source chain");
+        openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline, ETHEREUM_CHAIN_ID);
+        vm.stopPrank();
+
+        // Reactivate and try again
+        vm.startPrank(oracle);
+        chainRegistry.activateChain(ETHEREUM_CHAIN_ID);
+        fillGate.activateChain(ETHEREUM_CHAIN_ID);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        uint256 orderId =
+            openGate.open(address(usdc), amountIn, address(0), amountOut, recipient, fillDeadline, ETHEREUM_CHAIN_ID);
+        vm.stopPrank();
+
+        assertEq(openGate.orderStatus(orderId), "OPENED");
+    }
+
+    function test_MultiChain_SourceChainTracking() public {
+        uint256 amountOut = 0.05 ether;
+        uint256 fillDeadline = block.timestamp + 1 hours;
+
+        vm.prank(solver);
+        fillGate.fill{value: amountOut}(0, address(0), amountOut, recipient, solver, fillDeadline, POLYGON_CHAIN_ID);
+
+        assertEq(fillGate.getOrderSourceChain(0), POLYGON_CHAIN_ID);
     }
 }

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ChainRegistry} from "./ChainRegistry.sol";
 
 contract OpenGate {
     bytes32 public constant UNKNOWN = "";
@@ -13,37 +14,41 @@ contract OpenGate {
 
     address public trustedOracle;
     uint256 public orderCounter;
+    ChainRegistry public chainRegistry;
 
     struct Order {
         address sender;
         address tokenIn;
         uint256 amountIn;
-        address tokenOut;        // ← NEW: destination token
+        address tokenOut; // destination token
         uint256 amountOut;
         address recipient;
         uint256 fillDeadline;
+        uint256 sourceChainId; // NEW: source chain identifier
     }
 
     mapping(uint256 => bytes32) public orderStatus;
     mapping(uint256 => Order) public orders;
 
-    event OrderOpened(
+    event OrderOpened( // NEW: source chain identifier
         uint256 indexed orderId,
         address indexed sender,
         address indexed tokenIn,
         uint256 amountIn,
-        address tokenOut,        // ← NEW
+        address tokenOut,
         uint256 amountOut,
         address recipient,
-        uint256 fillDeadline
+        uint256 fillDeadline,
+        uint256 sourceChainId
     );
 
     event OrderSettled(uint256 indexed orderId, address indexed solverRecipient);
 
     event OrderRefunded(uint256 indexed orderId, address indexed sender);
 
-    constructor(address _trustedOracle) {
+    constructor(address _trustedOracle, address _chainRegistry) {
         trustedOracle = _trustedOracle;
+        chainRegistry = ChainRegistry(_chainRegistry);
         orderCounter = 0;
     }
 
@@ -54,6 +59,7 @@ contract OpenGate {
     /// @param amountOut Amount to receive on destination
     /// @param recipient Address to receive tokens on destination chain
     /// @param fillDeadline Deadline for solver to fill
+    /// @param sourceChainId Chain ID where this order originates
     /// @return orderId The sequential order ID
     function open(
         address tokenIn,
@@ -61,8 +67,12 @@ contract OpenGate {
         address tokenOut,
         uint256 amountOut,
         address recipient,
-        uint256 fillDeadline
+        uint256 fillDeadline,
+        uint256 sourceChainId
     ) external returns (uint256) {
+        // Validate source chain
+        require(chainRegistry.isChainValid(sourceChainId), "Invalid or inactive source chain");
+
         uint256 orderId = orderCounter++;
 
         if (orderStatus[orderId] != UNKNOWN) {
@@ -77,20 +87,14 @@ contract OpenGate {
             tokenOut: tokenOut,
             amountOut: amountOut,
             recipient: recipient,
-            fillDeadline: fillDeadline
+            fillDeadline: fillDeadline,
+            sourceChainId: sourceChainId
         });
 
         IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
 
         emit OrderOpened(
-            orderId,
-            msg.sender,
-            tokenIn,
-            amountIn,
-            tokenOut,
-            amountOut,
-            recipient,
-            fillDeadline
+            orderId, msg.sender, tokenIn, amountIn, tokenOut, amountOut, recipient, fillDeadline, sourceChainId
         );
 
         return orderId;
@@ -119,12 +123,11 @@ contract OpenGate {
     function refund(uint256 orderId) external {
         Order memory order = orders[orderId];
 
-        require(
-            msg.sender == order.sender || msg.sender == trustedOracle,
-            "Only sender or oracle can refund"
-        );
+        require(msg.sender == order.sender || msg.sender == trustedOracle, "Only sender or oracle can refund");
 
-        if (block.timestamp <= order.fillDeadline + FILL_GRACE_PERIOD) {
+        // Use chain-specific grace period
+        uint256 gracePeriod = chainRegistry.getGracePeriod(order.sourceChainId);
+        if (block.timestamp <= order.fillDeadline + gracePeriod) {
             revert("Cannot refund yet, fill window still open");
         }
 

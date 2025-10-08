@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract FillGate is AccessControl {
-    bytes32 public constant UNKNOWN = "";
-    bytes32 public constant FILLED = "FILLED";
+/// @title ChainRegistry
+/// @notice Manages supported source chains for cross-chain intent bridge
+contract ChainRegistry is AccessControl {
     bytes32 public constant CHAIN_MANAGER_ROLE = keccak256("CHAIN_MANAGER_ROLE");
 
-    uint256 public constant FILL_GRACE_PERIOD = 5 minutes;
-
-    // Embedded chain configuration
     struct ChainConfig {
         bool isSupported;
         uint256 gracePeriod;
@@ -21,23 +17,7 @@ contract FillGate is AccessControl {
 
     mapping(uint256 => ChainConfig) public chainConfigs;
     uint256[] public supportedChainIds;
-    
-    // Order tracking
-    mapping(uint256 => bytes32) public orderStatus;
-    mapping(uint256 => uint256) public orderSourceChains; // orderId => sourceChainId
 
-    event OrderFilled(
-        uint256 indexed orderId,
-        address indexed solver,
-        address indexed tokenOut,
-        uint256 amountOut,
-        address recipient,
-        address solverOriginAddress,
-        uint256 fillDeadline,
-        uint256 sourceChainId
-    );
-
-    // Chain management events
     event ChainAdded(uint256 indexed chainId, string name, uint256 gracePeriod);
     event ChainUpdated(uint256 indexed chainId, string name, uint256 gracePeriod);
     event ChainActivated(uint256 indexed chainId);
@@ -56,82 +36,6 @@ contract FillGate is AccessControl {
 
         emit ChainAdded(currentChainId, "Current Chain", 5 minutes);
     }
-
-    /// @notice Fill an order with native token or ERC20
-    /// @param orderId The order ID from OpenGate
-    /// @param tokenOut Address of token to send (address(0) for native)
-    /// @param amountOut Amount to send
-    /// @param recipient Address to receive tokens
-    /// @param solverOriginAddress Solver's address on origin chain (for settlement)
-    /// @param fillDeadline Order deadline
-    /// @param sourceChainId Source chain where the order was created
-    function fill(
-        uint256 orderId,
-        address tokenOut,
-        uint256 amountOut,
-        address recipient,
-        address solverOriginAddress,
-        uint256 fillDeadline,
-        uint256 sourceChainId
-    ) external payable {
-        // Validate source chain using embedded logic
-        require(isChainValid(sourceChainId), "Invalid or inactive source chain");
-
-        // Order belum pernah di-fill
-        if (orderStatus[orderId] != UNKNOWN) {
-            revert("Order already filled");
-        }
-
-        // Validasi deadline using chain-specific grace period
-        uint256 gracePeriod = getGracePeriod(sourceChainId);
-        if (block.timestamp > fillDeadline + gracePeriod) {
-            revert("Fill deadline exceeded");
-        }
-
-        // Update status BEFORE transfer (CEI pattern)
-        orderStatus[orderId] = FILLED;
-        orderSourceChains[orderId] = sourceChainId;
-
-        // Transfer logic
-        if (tokenOut == address(0)) {
-            // Native token (ETH/gas token)
-            if (msg.value != amountOut) {
-                revert("Incorrect native amount sent");
-            }
-
-            (bool success,) = recipient.call{value: msg.value}("");
-            if (!success) {
-                revert("Native transfer failed");
-            }
-        } else {
-            // ERC20 token
-            if (msg.value != 0) {
-                revert("Should not send native token for ERC20 fill");
-            }
-
-            // Transfer from solver to recipient
-            IERC20(tokenOut).transferFrom(msg.sender, recipient, amountOut);
-        }
-
-        emit OrderFilled(
-            orderId, msg.sender, tokenOut, amountOut, recipient, solverOriginAddress, fillDeadline, sourceChainId
-        );
-    }
-
-    function getOrderStatus(uint256 orderId) external view returns (bytes32) {
-        return orderStatus[orderId];
-    }
-
-    /// @notice Get the source chain ID for a filled order
-    /// @param orderId The order ID to check
-    /// @return sourceChainId The source chain ID where the order was created
-    function getOrderSourceChain(uint256 orderId) external view returns (uint256 sourceChainId) {
-        return orderSourceChains[orderId];
-    }
-
-    // ============================================
-    // EMBEDDED CHAIN MANAGEMENT FUNCTIONS
-    // ============================================
 
     /// @notice Add a new supported source chain
     /// @param chainId The chain ID to add
@@ -211,7 +115,7 @@ contract FillGate is AccessControl {
     /// @notice Check if a chain is supported and active
     /// @param chainId The chain ID to check
     /// @return isValid True if chain is supported and active
-    function isChainValid(uint256 chainId) public view returns (bool isValid) {
+    function isChainValid(uint256 chainId) external view returns (bool isValid) {
         ChainConfig memory config = chainConfigs[chainId];
         return config.isSupported && config.isActive;
     }
@@ -219,7 +123,7 @@ contract FillGate is AccessControl {
     /// @notice Get grace period for a specific chain
     /// @param chainId The chain ID to check
     /// @return gracePeriod Grace period in seconds
-    function getGracePeriod(uint256 chainId) public view returns (uint256 gracePeriod) {
+    function getGracePeriod(uint256 chainId) external view returns (uint256 gracePeriod) {
         require(chainConfigs[chainId].isSupported, "Chain not supported");
         return chainConfigs[chainId].gracePeriod;
     }
