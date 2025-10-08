@@ -43,11 +43,15 @@ async function main() {
       console.log('  post-message  - Post message to Stacks contract');
       console.log('');
       console.log('Examples:');
-      console.log('  pnpm dev open-order --amount 100 --token-out native');
+      console.log('  pnpm dev open-order --amount-in 100 --amount-out 0.05 --token-out native');
+      console.log('  pnpm dev open-order --amount-in 100 --amount-out 0.001 --token-out sbtc');
       console.log('  pnpm dev fill-order --order-id 0');
       console.log('  pnpm dev settle-order --order-id 0 --solver-address 0x...');
       console.log('  pnpm dev mint-token --chain-id 421614 --token-address 0x... --user-address 0x... --amount 1000');
-      console.log('  pnpm dev check-balances --recipient 0x...');
+      console.log('  pnpm dev check-balances');
+      console.log('');
+      console.log('Note: Default recipient is 0x297B9793aCe172ff947f1131382de92B57F9C7e6');
+      console.log('      Override with --recipient <address> if needed');
       console.log('');
       console.log('Setup:');
       console.log('  1. Copy .env.example to .env');

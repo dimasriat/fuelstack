@@ -28,6 +28,9 @@ if (!SOLVER_PRIVATE_KEY) {
 export const ORACLE_PRIVATE_KEY = process.env.ORACLE_PRIVATE_KEY || '';
 // Oracle key is optional unless running settle command
 
+// Default recipient address for testing
+export const DEFAULT_RECIPIENT_ADDRESS = '0x297B9793aCe172ff947f1131382de92B57F9C7e6';
+
 // ============================================
 // HARDCODED NETWORK CONFIGURATION
 // ============================================

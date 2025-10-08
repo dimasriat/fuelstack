@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 import { createPublicClientForChain, formatTokenAmount, SOURCE_CHAIN, DESTINATION_CHAIN } from '../utils/evm';
-import { SENDER_PRIVATE_KEY, SOLVER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS } from '../config';
+import { SENDER_PRIVATE_KEY, SOLVER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, DEFAULT_RECIPIENT_ADDRESS } from '../config';
 import { ERC20_ABI } from '../abis';
 import { getAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -47,10 +47,10 @@ export async function checkBalances() {
   const senderAccount = privateKeyToAccount(`0x${SENDER_PRIVATE_KEY.replace('0x', '')}`);
   const solverAccount = privateKeyToAccount(`0x${SOLVER_PRIVATE_KEY.replace('0x', '')}`);
   
-  // Get recipient address (default to sender)
+  // Get recipient address (default to DEFAULT_RECIPIENT_ADDRESS)
   const recipientAddress = args.values.recipient 
     ? getAddress(args.values.recipient)
-    : senderAccount.address;
+    : getAddress(DEFAULT_RECIPIENT_ADDRESS);
 
   // Create clients for both chains
   const arbitrumClient = createPublicClientForChain(SOURCE_CHAIN);

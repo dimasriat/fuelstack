@@ -1,11 +1,12 @@
 import { parseArgs } from 'node:util';
 import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, parseTokenAmount, getCurrentTimestamp, getTxExplorerUrl, SOURCE_CHAIN } from '../utils/evm';
-import { SENDER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, CHAIN_IDS } from '../config';
+import { SENDER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, CHAIN_IDS, DEFAULT_RECIPIENT_ADDRESS } from '../config';
 import { OPENGATE_ABI, ERC20_ABI } from '../abis';
 import { Address, getAddress } from 'viem';
 
 interface OpenOrderArgs {
-  amount: string;
+  amountIn: string;
+  amountOut: string;
   tokenOut: 'native' | 'sbtc';
   recipient?: string;
   deadline?: number; // hours from now
@@ -22,17 +23,25 @@ export async function openOrder() {
   const args = parseArgs({
     args: process.argv.slice(3),
     options: {
-      amount: { type: 'string' },
+      'amount-in': { type: 'string' },
+      'amount-out': { type: 'string' },
       'token-out': { type: 'string' },
       recipient: { type: 'string' },
       deadline: { type: 'string' }
     }
   });
 
-  // Validate amount
-  const amount = args.values.amount;
-  if (!amount || isNaN(parseFloat(amount))) {
-    console.error('❌ Invalid amount. Use --amount <number>');
+  // Validate amount-in
+  const amountIn = args.values['amount-in'];
+  if (!amountIn || isNaN(parseFloat(amountIn))) {
+    console.error('❌ Invalid amount-in. Use --amount-in <number>');
+    process.exit(1);
+  }
+
+  // Validate amount-out
+  const amountOut = args.values['amount-out'];
+  if (!amountOut || isNaN(parseFloat(amountOut))) {
+    console.error('❌ Invalid amount-out. Use --amount-out <number>');
     process.exit(1);
   }
 
@@ -51,27 +60,26 @@ export async function openOrder() {
   const openGateAddress = getAddress(SOURCE_CONTRACTS.openGate);
   const usdcAddress = getAddress(SOURCE_CONTRACTS.usdc);
 
-  // Get recipient (default to sender)
+  // Get recipient (default to DEFAULT_RECIPIENT_ADDRESS)
   const recipient = args.values.recipient 
     ? getAddress(args.values.recipient)
-    : walletClient.account.address;
+    : getAddress(DEFAULT_RECIPIENT_ADDRESS);
 
   // Calculate deadline
   const deadlineHours = args.values.deadline ? parseInt(args.values.deadline) : DEFAULT_DEADLINE_HOURS;
   const fillDeadline = getCurrentTimestamp() + (deadlineHours * 3600);
 
   // Parse amounts
-  const amountIn = parseTokenAmount(amount, USDC_DECIMALS);
-  // For simplicity, we'll use a fixed rate (in production, this would come from an oracle or market)
-  const amountOut = tokenOut === 'native' 
-    ? parseTokenAmount('0.001', 18) // 0.001 ETH per USDC (example rate)
-    : parseTokenAmount('0.00001', 8);  // 0.00001 sBTC per USDC (example rate)
+  const amountInBigInt = parseTokenAmount(amountIn, USDC_DECIMALS);
+  const amountOutBigInt = tokenOut === 'native' 
+    ? parseTokenAmount(amountOut, 18) // ETH has 18 decimals
+    : parseTokenAmount(amountOut, 8);  // sBTC has 8 decimals
 
   console.log('📋 Order Details:');
   console.log(`  Token In: USDC (Arbitrum Sepolia)`);
-  console.log(`  Amount In: ${amount} USDC`);
+  console.log(`  Amount In: ${amountIn} USDC`);
   console.log(`  Token Out: ${tokenOut === 'native' ? 'ETH (Base Sepolia)' : 'sBTC (Base Sepolia)'}`);
-  console.log(`  Amount Out: ${formatTokenAmount(amountOut, tokenOut === 'native' ? 18 : 8, tokenOut === 'native' ? 'ETH' : 'sBTC')}`);
+  console.log(`  Amount Out: ${amountOut} ${tokenOut === 'native' ? 'ETH' : 'sBTC'}`);
   console.log(`  Recipient: ${recipient}`);
   console.log(`  Deadline: ${new Date(fillDeadline * 1000).toLocaleString()}`);
   console.log('');
@@ -86,8 +94,8 @@ export async function openOrder() {
       args: [walletClient.account.address]
     });
 
-    if (balance < amountIn) {
-      console.error(`❌ Insufficient USDC balance. Have: ${formatTokenAmount(balance, USDC_DECIMALS, 'USDC')}, Need: ${amount} USDC`);
+    if (balance < amountInBigInt) {
+      console.error(`❌ Insufficient USDC balance. Have: ${formatTokenAmount(balance, USDC_DECIMALS, 'USDC')}, Need: ${amountIn} USDC`);
       process.exit(1);
     }
     console.log(`✅ USDC balance: ${formatTokenAmount(balance, USDC_DECIMALS, 'USDC')}`);
@@ -101,13 +109,13 @@ export async function openOrder() {
       args: [walletClient.account.address, openGateAddress]
     });
 
-    if (allowance < amountIn) {
+    if (allowance < amountInBigInt) {
       console.log('📝 Approving USDC...');
       const approveTx = await walletClient.writeContract({
         address: usdcAddress,
         abi: ERC20_ABI,
         functionName: 'approve',
-        args: [openGateAddress, amountIn]
+        args: [openGateAddress, amountInBigInt]
       });
       
       console.log(`⏳ Approval tx: ${getTxExplorerUrl(SOURCE_CHAIN, approveTx)}`);
@@ -130,11 +138,11 @@ export async function openOrder() {
       functionName: 'open',
       args: [
         usdcAddress,                    // tokenIn
-        amountIn,                       // amountIn  
+        amountInBigInt,                 // amountIn  
         tokenOut === 'native' ? '0x0000000000000000000000000000000000000000' : DESTINATION_CONTRACTS.sbtc as Address, // tokenOut
-        amountOut,                      // amountOut
+        amountOutBigInt,                // amountOut
         recipient,                      // recipient
-        BigInt(fillDeadline),                   // fillDeadline
+        BigInt(fillDeadline),           // fillDeadline
         BigInt(CHAIN_IDS.arbitrumSepolia) // sourceChainId
       ]
     });
