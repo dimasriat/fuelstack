@@ -65,6 +65,9 @@ importers:
       minimist:
         specifier: ^1.2.8
         version: 1.2.8
+      viem:
+        specifier: ^2.38.0
+        version: 2.38.0(typescript@5.9.3)(zod@3.22.4)
     devDependencies:
       '@types/minimist':
         specifier: ^1.2.5
@@ -2702,14 +2705,6 @@ packages:
       typescript:
         optional: true
 
-  viem@2.37.12:
-    resolution: {integrity: sha512-87lIfGNrAxrfxuM3TCxRET8cj5LvrLZABwJuilHGvijIrPZHZVFv3alquaRx0vvrfSP4QeIcnV/QaO/w2iXbsQ==}
-    peerDependencies:
-      typescript: '>=5.0.4'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-
   viem@2.38.0:
     resolution: {integrity: sha512-YU5TG8dgBNeYPrCMww0u9/JVeq2ZCk9fzk6QybrPkBooFysamHXL1zC3ua10aLPt9iWoA/gSVf1D9w7nc5B1aA==}
     peerDependencies:
@@ -3446,7 +3441,7 @@ snapshots:
     dependencies:
       big.js: 6.2.2
       dayjs: 1.11.13
-      viem: 2.37.12(typescript@5.9.3)(zod@3.22.4)
+      viem: 2.38.0(typescript@5.9.3)(zod@3.22.4)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -3459,7 +3454,7 @@ snapshots:
       '@reown/appkit-wallet': 1.7.17(typescript@5.9.3)
       '@walletconnect/universal-provider': 2.21.5(typescript@5.9.3)(zod@3.22.4)
       valtio: 2.1.5(@types/react@19.2.0)(react@19.2.0)
-      viem: 2.37.12(typescript@5.9.3)(zod@3.22.4)
+      viem: 2.38.0(typescript@5.9.3)(zod@3.22.4)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -3688,7 +3683,7 @@ snapshots:
       '@walletconnect/logger': 2.1.2
       '@walletconnect/universal-provider': 2.21.5(typescript@5.9.3)(zod@3.22.4)
       valtio: 2.1.5(@types/react@19.2.0)(react@19.2.0)
-      viem: 2.37.12(typescript@5.9.3)(zod@3.22.4)
+      viem: 2.38.0(typescript@5.9.3)(zod@3.22.4)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -3742,7 +3737,7 @@ snapshots:
       bs58: 6.0.0
       semver: 7.7.2
       valtio: 2.1.5(@types/react@19.2.0)(react@19.2.0)
-      viem: 2.37.12(typescript@5.9.3)(zod@3.22.4)
+      viem: 2.38.0(typescript@5.9.3)(zod@3.22.4)
     optionalDependencies:
       '@lit/react': 1.0.8(@types/react@19.2.0)
       '@reown/appkit-siwx': 1.7.17(@types/react@19.2.0)(lit@3.3.0)(react@19.2.0)(typescript@5.9.3)(valtio@2.1.5(@types/react@19.2.0)(react@19.2.0))(zod@3.22.4)
@@ -6194,23 +6189,6 @@ snapshots:
       - utf-8-validate
       - zod
     optional: true
-
-  viem@2.37.12(typescript@5.9.3)(zod@3.22.4):
-    dependencies:
-      '@noble/curves': 1.9.1
-      '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.7.0
-      '@scure/bip39': 1.6.0
-      abitype: 1.1.0(typescript@5.9.3)(zod@3.22.4)
-      isows: 1.0.7(ws@8.18.3)
-      ox: 0.9.6(typescript@5.9.3)(zod@3.22.4)
-      ws: 8.18.3
-    optionalDependencies:
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - zod
 
   viem@2.38.0(typescript@5.9.3)(zod@3.22.4):
     dependencies:
