@@ -1,25 +1,29 @@
 import { createPublicClient, http, Address, Log, Abi } from 'viem';
-import { sepolia } from 'viem/chains';
-import { config } from '../config/config';
+import { ChainConfig } from '../config/chains';
 import { db } from '../database/db';
 import OpenGateABI from '../abis/OpenGate.json';
 
 export class OpenGateListener {
   private client;
   private unwatch?: () => void;
+  private chainId: number;
+  private chainConfig: ChainConfig;
 
-  constructor() {
+  constructor(chainId: number, chainConfig: ChainConfig) {
+    this.chainId = chainId;
+    this.chainConfig = chainConfig;
+    
     this.client = createPublicClient({
-      chain: sepolia,
-      transport: http(config.openGate.rpcUrl)
+      chain: chainConfig.viemChain,
+      transport: http(chainConfig.rpcUrl)
     });
   }
 
   async start(): Promise<void> {
-    console.log('👂 Listening for OrderOpened events on OpenGate...');
+    console.log(`👂 Listening for OrderOpened events on ${this.chainConfig.name}...`);
 
     this.unwatch = this.client.watchContractEvent({
-      address: config.openGate.contractAddress,
+      address: this.chainConfig.openGate as `0x${string}`,
       abi: OpenGateABI as Abi,
       eventName: 'OrderOpened',
       onLogs: async (logs: any[]) => {
@@ -35,7 +39,7 @@ export class OpenGateListener {
           const fillDeadline = log.args.fillDeadline as bigint;
           const sourceChainId = log.args.sourceChainId as bigint;
 
-          console.log(`\n🔔 OrderOpened Event Detected!`);
+          console.log(`\n🔔 OrderOpened Event Detected on ${this.chainConfig.name}!`);
           console.log(`   OrderId: ${orderId}`);
           console.log(`   Sender: ${sender}`);
           console.log(`   TokenIn: ${tokenIn}`);
@@ -61,9 +65,9 @@ export class OpenGateListener {
               createdAt: Date.now(),
             });
 
-            console.log(`✅ Order ${orderId} stored successfully\n`);
+            console.log(`✅ Order ${orderId} stored successfully on ${this.chainConfig.name}\n`);
           } catch (error) {
-            console.error(`❌ Error storing order ${orderId}:`, error);
+            console.error(`❌ Error storing order ${orderId} from ${this.chainConfig.name}:`, error);
           }
         }
       }
@@ -74,6 +78,6 @@ export class OpenGateListener {
     if (this.unwatch) {
       this.unwatch();
     }
-    console.log('🛑 OpenGate listener stopped');
+    console.log(`🛑 ${this.chainConfig.name} OpenGate listener stopped`);
   }
 }

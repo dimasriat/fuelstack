@@ -1,6 +1,5 @@
 import { createPublicClient, http, Address, Abi } from 'viem';
-import { sepolia } from 'viem/chains';
-import { config } from '../config/config';
+import { ChainConfig } from '../config/chains';
 import { db } from '../database/db';
 import { OrderValidator } from '../validators/orderValidator';
 import { Settler } from '../settlers/settler';
@@ -11,21 +10,24 @@ export class FillGateListener {
   private unwatch?: () => void;
   private validator: OrderValidator;
   private settler: Settler;
+  private chainConfig: ChainConfig;
 
-  constructor() {
+  constructor(chainConfig: ChainConfig) {
+    this.chainConfig = chainConfig;
+    
     this.client = createPublicClient({
-      chain: sepolia,
-      transport: http(config.fillGate.rpcUrl)
+      chain: chainConfig.viemChain,
+      transport: http(chainConfig.rpcUrl)
     });
     this.validator = new OrderValidator();
     this.settler = new Settler();
   }
 
   async start(): Promise<void> {
-    console.log('👂 Listening for OrderFilled events on FillGate...');
+    console.log(`👂 Listening for OrderFilled events on ${this.chainConfig.name} FillGate...`);
 
     this.unwatch = this.client.watchContractEvent({
-      address: config.fillGate.contractAddress,
+      address: this.chainConfig.fillGate as `0x${string}`,
       abi: FillGateABI as Abi,
       eventName: 'OrderFilled',
       onLogs: async (logs: any[]) => {
@@ -40,7 +42,7 @@ export class FillGateListener {
           const fillDeadline = log.args.fillDeadline as bigint;
           const sourceChainId = log.args.sourceChainId as bigint;
 
-          console.log(`\n🔔 OrderFilled Event Detected!`);
+          console.log(`\n🔔 OrderFilled Event Detected on ${this.chainConfig.name}!`);
           console.log(`   OrderId: ${orderId}`);
           console.log(`   Solver: ${solver}`);
           console.log(`   TokenOut: ${tokenOut === '0x0000000000000000000000000000000000000000' ? 'NATIVE' : tokenOut}`);
@@ -83,6 +85,6 @@ export class FillGateListener {
     if (this.unwatch) {
       this.unwatch();
     }
-    console.log('🛑 FillGate listener stopped');
+    console.log(`🛑 ${this.chainConfig.name} FillGate listener stopped`);
   }
 }

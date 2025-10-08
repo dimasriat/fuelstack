@@ -1,35 +1,24 @@
 import { config } from './config/config';
-import { db } from './database/db';
-import { OpenGateListener } from './listeners/openGateListener';
-import { FillGateListener } from './listeners/fillGateListener';
+import { MultiChainManager } from './managers/multiChainManager';
 
 async function main() {
-  console.log('🚀 FuelStack Keeper Starting...\n');
+  console.log('🚀 FuelStack Multi-Chain Keeper Starting...\n');
   console.log('Vision: Onboarding Gateway to Bitcoin Economy on Stacks\n');
 
   // Validate config
-  console.log('Config:');
-  console.log(`  OpenGate RPC: ${config.openGate.rpcUrl ? '✅' : '❌'}`);
-  console.log(`  FillGate RPC: ${config.fillGate.rpcUrl ? '✅' : '❌'}`);
-  console.log(`  OpenGate Address: ${config.openGate.contractAddress || '⚠️  Not set'}`);
-  console.log(`  FillGate Address: ${config.fillGate.contractAddress || '⚠️  Not set'}`);
-  console.log(`  Oracle Wallet: ${config.oracle.privateKey ? '✅' : '❌'}\n`);
+  console.log('⚙️  Configuration:');
+  console.log(`  Oracle Wallet: ${config.oracle.privateKey ? '✅' : '❌'}`);
+  console.log(`  Database Type: ${config.database.type}\n`);
 
-  // Start listeners
-  const openGateListener = new OpenGateListener();
-  const fillGateListener = new FillGateListener();
-
-  await openGateListener.start();
-  await fillGateListener.start();
-
-  console.log('\n✅ Keeper initialized and listening for events\n');
+  // Initialize multi-chain manager
+  const multiChainManager = new MultiChainManager();
+  
+  await multiChainManager.start();
 
   // Graceful shutdown
   process.on('SIGINT', async () => {
     console.log('\n\n🛑 Shutting down gracefully...');
-    await openGateListener.stop();
-    await fillGateListener.stop();
-    await db.printAllOrders();
+    await multiChainManager.stop();
     process.exit(0);
   });
 }
