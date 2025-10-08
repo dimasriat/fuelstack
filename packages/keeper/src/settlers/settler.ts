@@ -43,8 +43,8 @@ export class Settler {
   }
 
   async settleOrder(orderId: string, solverRecipient: Address): Promise<void> {
-    console.log(`\n💰 Settling order ${orderId}...`);
-    console.log(`   Solver recipient: ${solverRecipient}`);
+    console.log(`\n✅ **PHASE 3: ORDER SETTLED**`);
+    console.log(`   Order #${orderId} completing settlement...`);
 
     try {
       // Get order to determine source chain
@@ -67,8 +67,6 @@ export class Settler {
         throw new Error(`No client configured for chain ${chainConfig.name} (${sourceChainId})`);
       }
 
-      console.log(`   🔗 Settling on ${chainConfig.name} (${sourceChainId})`);
-
       const hash = await walletClient.writeContract({
         address: chainConfig.openGate as `0x${string}`,
         abi: OpenGateABI,
@@ -76,13 +74,10 @@ export class Settler {
         args: [BigInt(orderId), solverRecipient]
       });
 
-      console.log(`   📤 Transaction sent: ${hash}`);
-
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      console.log(`   ✅ Transaction confirmed in block ${receipt.blockNumber} on ${chainConfig.name}`);
-
+      
       await db.updateOrderStatus(orderId, 'SETTLED');
-      console.log(`   ✅ Order ${orderId} settled successfully\n`);
+      console.log(`   ✅ Settlement complete - USDC released to solver on ${chainConfig.name}\n`);
 
     } catch (error: any) {
       console.error(`   ❌ Settlement failed for order ${orderId}:`);

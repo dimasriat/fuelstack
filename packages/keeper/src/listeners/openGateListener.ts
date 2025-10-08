@@ -39,16 +39,10 @@ export class OpenGateListener {
           const fillDeadline = log.args.fillDeadline as bigint;
           const sourceChainId = log.args.sourceChainId as bigint;
 
-          console.log(`\n🔔 OrderOpened Event Detected on ${this.chainConfig.name}!`);
-          console.log(`   OrderId: ${orderId}`);
-          console.log(`   Sender: ${sender}`);
-          console.log(`   TokenIn: ${tokenIn}`);
-          console.log(`   AmountIn: ${amountIn}`);
-          console.log(`   TokenOut: ${tokenOut === '0x0000000000000000000000000000000000000000' ? 'NATIVE' : tokenOut}`);
-          console.log(`   AmountOut: ${amountOut}`);
-          console.log(`   Recipient: ${recipient}`);
-          console.log(`   Deadline: ${new Date(Number(fillDeadline) * 1000).toISOString()}`);
-          console.log(`   SourceChainId: ${sourceChainId}`);
+          const tokenType = tokenOut === '0x0000000000000000000000000000000000000000' ? 'ETH' : 'sBTC';
+          
+          console.log(`\n🎯 **PHASE 1: ORDER OPENED**`);
+          console.log(`   Order #${orderId} - ${amountIn} USDC → ${amountOut} ${tokenType} on ${this.chainConfig.name}`);
 
           try {
             await db.insertOrder({
@@ -65,7 +59,7 @@ export class OpenGateListener {
               createdAt: Date.now(),
             });
 
-            console.log(`✅ Order ${orderId} stored successfully on ${this.chainConfig.name}\n`);
+            console.log(`   ✅ Order stored and ready for filling\n`);
           } catch (error) {
             console.error(`❌ Error storing order ${orderId} from ${this.chainConfig.name}:`, error);
           }

@@ -42,14 +42,10 @@ export class FillGateListener {
           const fillDeadline = log.args.fillDeadline as bigint;
           const sourceChainId = log.args.sourceChainId as bigint;
 
-          console.log(`\n🔔 OrderFilled Event Detected on ${this.chainConfig.name}!`);
-          console.log(`   OrderId: ${orderId}`);
-          console.log(`   Solver: ${solver}`);
-          console.log(`   TokenOut: ${tokenOut === '0x0000000000000000000000000000000000000000' ? 'NATIVE' : tokenOut}`);
-          console.log(`   AmountOut: ${amountOut}`);
-          console.log(`   Recipient: ${recipient}`);
-          console.log(`   SolverOriginAddress: ${solverOriginAddress}`);
-          console.log(`   SourceChainId: ${sourceChainId}`);
+          const tokenType = tokenOut === '0x0000000000000000000000000000000000000000' ? 'ETH' : 'sBTC';
+          
+          console.log(`\n⚡ **PHASE 2: ORDER FILLED**`);
+          console.log(`   Order #${orderId} filled by solver (${amountOut} ${tokenType})`);
 
           try {
             // Validate fill
@@ -61,11 +57,11 @@ export class FillGateListener {
             );
 
             if (!isValid) {
-              console.log(`❌ Order ${orderId} validation FAILED - will NOT settle`);
+              console.log(`   ❌ Validation failed - order will not be settled`);
               return;
             }
 
-            console.log(`✅ Order ${orderId} validation PASSED`);
+            console.log(`   ✅ Validation passed - proceeding to settlement`);
 
             // Update status
             await db.updateOrderStatus(orderId.toString(), 'FILLED');

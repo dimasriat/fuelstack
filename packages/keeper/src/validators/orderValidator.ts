@@ -8,7 +8,6 @@ export class OrderValidator {
     amountOut: string,
     recipient: Address
   ): Promise<boolean> {
-    console.log(`\n🔍 Validating fill for order ${orderId}...`);
 
     // Get stored order
     const storedOrder = await db.getOrder(orderId);
@@ -65,10 +64,6 @@ export class OrderValidator {
       return false;
     }
 
-    console.log(`   ✅ All validations passed`);
-    console.log(`      TokenOut: ${tokenOut === zeroAddress ? 'NATIVE' : 'ERC20'}`);
-    console.log(`      AmountOut: ${amountOut}`);
-    console.log(`      Recipient: ${recipient}`);
 
     return true;
   }

@@ -19,10 +19,6 @@ class Database {
 
   async insertOrder(order: Order): Promise<void> {
     this.orders.set(order.orderId, order);
-    const tokenType = order.tokenOut === '0x0000000000000000000000000000000000000000' 
-      ? 'NATIVE' 
-      : 'ERC20';
-    console.log(`📝 Order ${order.orderId} stored (${tokenType}, Chain ${order.sourceChainId}): ${order.amountIn} ${order.tokenIn} → ${order.amountOut} ${order.tokenOut}`);
   }
 
   async getOrder(orderId: string): Promise<Order | undefined> {
@@ -39,7 +35,6 @@ class Database {
         order.settledAt = Date.now();
       }
       this.orders.set(orderId, order);
-      console.log(`📝 Order ${orderId} status updated to ${status}`);
     }
   }
 

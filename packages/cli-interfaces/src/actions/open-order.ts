@@ -163,13 +163,15 @@ export async function openOrder() {
 
     if (orderOpenedEvent && orderOpenedEvent.topics[1]) {
       const orderId = parseInt(orderOpenedEvent.topics[1], 16);
-      console.log('\n✅ Order opened successfully!');
-      console.log(`📋 Order ID: ${orderId}`);
+      console.log('\n🎯 **ORDER CREATED SUCCESSFULLY**');
+      console.log(`📋 Order ID: #${orderId}`);
       console.log(`🔗 Transaction: ${getTxExplorerUrl(SOURCE_CHAIN, openTx)}`);
       console.log(`\n💡 Next: Use "pnpm dev fill-order --order-id ${orderId}" to fill this order`);
+      console.log(`📊 Or watch the keeper/solver automatically fill Order #${orderId}`);
     } else {
       console.log('\n✅ Order opened successfully!');
       console.log(`🔗 Transaction: ${getTxExplorerUrl(SOURCE_CHAIN, openTx)}`);
+      console.log('⚠️  Could not extract Order ID from transaction logs');
     }
 
   } catch (error) {
