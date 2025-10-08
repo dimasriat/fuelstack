@@ -38,6 +38,7 @@ export class FillGateListener {
           const recipient = log.args.recipient as Address;
           const solverOriginAddress = log.args.solverOriginAddress as Address;
           const fillDeadline = log.args.fillDeadline as bigint;
+          const sourceChainId = log.args.sourceChainId as bigint;
 
           console.log(`\n🔔 OrderFilled Event Detected!`);
           console.log(`   OrderId: ${orderId}`);
@@ -46,6 +47,7 @@ export class FillGateListener {
           console.log(`   AmountOut: ${amountOut}`);
           console.log(`   Recipient: ${recipient}`);
           console.log(`   SolverOriginAddress: ${solverOriginAddress}`);
+          console.log(`   SourceChainId: ${sourceChainId}`);
 
           try {
             // Validate fill

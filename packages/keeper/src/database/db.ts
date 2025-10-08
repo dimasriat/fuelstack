@@ -7,6 +7,7 @@ export interface Order {
   amountOut: string;
   recipient: string;
   fillDeadline: string;
+  sourceChainId: string;
   status: 'OPENED' | 'FILLED' | 'SETTLED' | 'REFUNDED';
   createdAt: number;
   filledAt?: number;
@@ -21,7 +22,7 @@ class Database {
     const tokenType = order.tokenOut === '0x0000000000000000000000000000000000000000' 
       ? 'NATIVE' 
       : 'ERC20';
-    console.log(`📝 Order ${order.orderId} stored (${tokenType}): ${order.amountIn} ${order.tokenIn} → ${order.amountOut} ${order.tokenOut}`);
+    console.log(`📝 Order ${order.orderId} stored (${tokenType}, Chain ${order.sourceChainId}): ${order.amountIn} ${order.tokenIn} → ${order.amountOut} ${order.tokenOut}`);
   }
 
   async getOrder(orderId: string): Promise<Order | undefined> {
@@ -51,6 +52,7 @@ class Database {
     const orders = Array.from(this.orders.values()).map(o => ({
       id: o.orderId,
       status: o.status,
+      sourceChainId: o.sourceChainId,
       tokenIn: o.tokenIn.slice(0, 8) + '...',
       amountIn: o.amountIn,
       tokenOut: o.tokenOut === '0x0000000000000000000000000000000000000000' ? 'NATIVE' : o.tokenOut.slice(0, 8) + '...',

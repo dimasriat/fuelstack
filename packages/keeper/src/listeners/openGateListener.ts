@@ -33,6 +33,7 @@ export class OpenGateListener {
           const amountOut = log.args.amountOut as bigint;
           const recipient = log.args.recipient as Address;
           const fillDeadline = log.args.fillDeadline as bigint;
+          const sourceChainId = log.args.sourceChainId as bigint;
 
           console.log(`\n🔔 OrderOpened Event Detected!`);
           console.log(`   OrderId: ${orderId}`);
@@ -43,6 +44,7 @@ export class OpenGateListener {
           console.log(`   AmountOut: ${amountOut}`);
           console.log(`   Recipient: ${recipient}`);
           console.log(`   Deadline: ${new Date(Number(fillDeadline) * 1000).toISOString()}`);
+          console.log(`   SourceChainId: ${sourceChainId}`);
 
           try {
             await db.insertOrder({
@@ -54,6 +56,7 @@ export class OpenGateListener {
               amountOut: amountOut.toString(),
               recipient: recipient,
               fillDeadline: fillDeadline.toString(),
+              sourceChainId: sourceChainId.toString(),
               status: 'OPENED',
               createdAt: Date.now(),
             });
