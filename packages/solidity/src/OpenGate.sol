@@ -42,7 +42,7 @@ contract OpenGate {
         uint256 sourceChainId
     );
 
-    event OrderSettled(uint256 indexed orderId, address indexed solverRecipient);
+    event OrderSettled(uint256 indexed orderId, address indexed solverRecipient, uint256 sourceChainId);
 
     event OrderRefunded(uint256 indexed orderId, address indexed sender);
 
@@ -115,7 +115,7 @@ contract OpenGate {
         Order memory order = orders[orderId];
         IERC20(order.tokenIn).transfer(solverRecipient, order.amountIn);
 
-        emit OrderSettled(orderId, solverRecipient);
+        emit OrderSettled(orderId, solverRecipient, order.sourceChainId);
     }
 
     /// @notice Refund an unfilled order after grace period
