@@ -1,5 +1,5 @@
 {
-  "name": "@fuelstack-monorepo/cli-interface",
+  "name": "@fuelstack-monorepo/keeper",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
