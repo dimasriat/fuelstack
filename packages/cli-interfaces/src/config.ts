@@ -3,12 +3,23 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // ============================================
-// STACKS CONFIGURATION (for future use)
+// STACKS CONFIGURATION
 // ============================================
 export const WALLET_MNEMONIC_KEY = process.env.WALLET_MNEMONIC_KEY || '';
 export const WALLET_PASSWORD = process.env.WALLET_PASSWORD || '';
+
+// Legacy contract (for get-messages, post-message)
 export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 export const CONTRACT_NAME = process.env.CONTRACT_NAME || '';
+
+// Stacks Testnet Token Contracts (SIP-10)
+export const STACKS_CONTRACTS = {
+  sbtc: {
+    address: process.env.STACKS_SBTC_ADDRESS || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM',
+    name: process.env.STACKS_SBTC_NAME || 'sbtc-token',
+  },
+  // Add more SIP-10 tokens as needed
+};
 
 // ============================================
 // EVM CONFIGURATION - Role-based Private Keys
