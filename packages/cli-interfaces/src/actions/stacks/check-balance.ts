@@ -5,8 +5,8 @@ import {
   parseFungibleTokens,
   getStacksAddress,
   TokenBalance
-} from '../utils/stacks';
-import { WALLET_MNEMONIC_KEY, WALLET_PASSWORD } from '../config';
+} from '../../utils/stacks';
+import { WALLET_MNEMONIC_KEY, WALLET_PASSWORD } from '../../config';
 
 interface CheckStacksBalanceArgs {
   address?: string;

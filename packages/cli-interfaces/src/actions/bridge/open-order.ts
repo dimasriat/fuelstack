@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
-import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, parseTokenAmount, getCurrentTimestamp, getTxExplorerUrl, SOURCE_CHAIN } from '../utils/evm';
-import { SENDER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, CHAIN_IDS, DEFAULT_RECIPIENT_ADDRESS } from '../config';
-import { OPENGATE_ABI, ERC20_ABI } from '../abis';
+import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, parseTokenAmount, getCurrentTimestamp, getTxExplorerUrl, SOURCE_CHAIN } from '../../utils/evm';
+import { SENDER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, CHAIN_IDS, DEFAULT_RECIPIENT_ADDRESS } from '../../config';
+import { OPENGATE_ABI, ERC20_ABI } from '../../abis';
 import { Address, getAddress, decodeEventLog } from 'viem';
 
 interface OpenOrderArgs {

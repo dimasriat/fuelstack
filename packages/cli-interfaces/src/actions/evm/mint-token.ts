@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
-import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, parseTokenAmount, getTxExplorerUrl, type ChainKey } from '../utils/evm';
-import { SENDER_PRIVATE_KEY, CHAIN_IDS } from '../config';
-import { ERC20_ABI } from '../abis';
+import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, parseTokenAmount, getTxExplorerUrl, type ChainKey } from '../../utils/evm';
+import { SENDER_PRIVATE_KEY, CHAIN_IDS } from '../../config';
+import { ERC20_ABI } from '../../abis';
 import { getAddress } from 'viem';
 
 interface MintTokenArgs {

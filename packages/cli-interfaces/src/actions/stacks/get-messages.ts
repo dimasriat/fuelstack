@@ -4,7 +4,7 @@ import {
   uintCV,
   UIntCV,
 } from '@stacks/transactions';
-import { CONTRACT_ADDRESS, CONTRACT_NAME } from '../config';
+import { CONTRACT_ADDRESS, CONTRACT_NAME } from '../../config';
 
 const client = clientFromNetwork(STACKS_MAINNET);
 
