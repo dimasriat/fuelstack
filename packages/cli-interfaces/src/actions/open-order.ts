@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, parseTokenAmount, getCurrentTimestamp, getTxExplorerUrl, SOURCE_CHAIN } from '../utils/evm';
 import { SENDER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, CHAIN_IDS, DEFAULT_RECIPIENT_ADDRESS } from '../config';
 import { OPENGATE_ABI, ERC20_ABI } from '../abis';
-import { Address, getAddress } from 'viem';
+import { Address, getAddress, decodeEventLog } from 'viem';
 
 interface OpenOrderArgs {
   amountIn: string;
@@ -156,13 +156,29 @@ export async function openOrder() {
       process.exit(1);
     }
 
-    // Get order ID from logs
-    const orderOpenedEvent = receipt.logs.find(log => 
-      log.topics[0] === '0x7a14e7f16369ba3a8b5e0d114e8c82ed8a940ac37d199b2aabf8d0a4d9b8cfac' // OrderOpened event signature
-    );
+    // Get order ID from logs using proper event decoding
+    const logs = receipt.logs;
+    let orderId: bigint | undefined;
 
-    if (orderOpenedEvent && orderOpenedEvent.topics[1]) {
-      const orderId = parseInt(orderOpenedEvent.topics[1], 16);
+    // Parse logs to find OrderOpened event
+    for (const log of logs) {
+      try {
+        const decoded = decodeEventLog({
+          abi: OPENGATE_ABI,
+          data: log.data,
+          topics: log.topics
+        });
+
+        if (decoded.eventName === 'OrderOpened') {
+          orderId = decoded.args.orderId as bigint;
+          break;
+        }
+      } catch {
+        // Not an OrderOpened event or decode failed, continue
+      }
+    }
+
+    if (orderId !== undefined) {
       console.log('\n🎯 **ORDER CREATED SUCCESSFULLY**');
       console.log(`📋 Order ID: #${orderId}`);
       console.log(`🔗 Transaction: ${getTxExplorerUrl(SOURCE_CHAIN, openTx)}`);

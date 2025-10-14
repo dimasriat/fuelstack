@@ -47,6 +47,23 @@ export const OPENGATE_ABI = [
     outputs: [{ name: '', type: 'bytes32' }],
     stateMutability: 'view',
     type: 'function'
+  },
+  // OrderOpened event
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'orderId', type: 'uint256' },
+      { indexed: true, name: 'sender', type: 'address' },
+      { indexed: true, name: 'tokenIn', type: 'address' },
+      { indexed: false, name: 'amountIn', type: 'uint256' },
+      { indexed: false, name: 'tokenOut', type: 'address' },
+      { indexed: false, name: 'amountOut', type: 'uint256' },
+      { indexed: false, name: 'recipient', type: 'address' },
+      { indexed: false, name: 'fillDeadline', type: 'uint256' },
+      { indexed: false, name: 'sourceChainId', type: 'uint256' }
+    ],
+    name: 'OrderOpened',
+    type: 'event'
   }
 ] as const;
 

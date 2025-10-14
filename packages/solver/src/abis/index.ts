@@ -54,7 +54,7 @@ export const OPENGATE_ABI = [
     inputs: [
       { indexed: true, name: 'orderId', type: 'uint256' },
       { indexed: true, name: 'sender', type: 'address' },
-      { indexed: false, name: 'tokenIn', type: 'address' },
+      { indexed: true, name: 'tokenIn', type: 'address' },
       { indexed: false, name: 'amountIn', type: 'uint256' },
       { indexed: false, name: 'tokenOut', type: 'address' },
       { indexed: false, name: 'amountOut', type: 'uint256' },
