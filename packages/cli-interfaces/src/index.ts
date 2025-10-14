@@ -8,6 +8,7 @@ import {
   checkStacksBalance,
   mintStacksToken,
   transferStacksToken,
+  listStacksWallets,
   // Bridge actions
   openOrder,
   fillOrder,
@@ -71,6 +72,9 @@ async function handleStacksCommand(action: string) {
       break;
     case 'check-balance':
       await checkStacksBalance();
+      break;
+    case 'list-wallets':
+      await listStacksWallets();
       break;
     case 'get-messages':
       await getMessages();
@@ -166,6 +170,7 @@ function showHelp() {
   console.log('  stacks:mint-token    Mint SIP-10 fungible tokens');
   console.log('  stacks:transfer      Transfer STX or SIP-10 tokens');
   console.log('  stacks:check-balance Check STX and token balances');
+  console.log('  stacks:list-wallets  List wallet addresses and keys from mnemonic');
   console.log('  stacks:get-messages  Get messages from contract (legacy)');
   console.log('  stacks:post-message  Post message to contract (legacy)');
   console.log('');
@@ -193,6 +198,10 @@ function showHelp() {
   console.log('');
   console.log('  # Stacks: Transfer SIP-10 tokens');
   console.log('  pnpm dev stacks:transfer --token-type sip10 --contract-address ST1... --contract-name sbtc-token --recipient ST2... --amount 100');
+  console.log('');
+  console.log('  # Stacks: List wallet addresses');
+  console.log('  pnpm dev stacks:list-wallets --count 3');
+  console.log('  pnpm dev stacks:list-wallets --hide-private  # Hide private keys');
   console.log('');
   console.log('  # Bridge: Open cross-chain order');
   console.log('  pnpm dev bridge:open-order --amount-in 100 --amount-out 0.001 --token-out sbtc');
