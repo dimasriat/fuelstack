@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 import { generateWallet, getStxAddress } from '@stacks/wallet-sdk';
-import { publicKeyFromPrivateKey } from '@stacks/transactions';
+import { privateKeyToPublic, publicKeyToHex } from '@stacks/transactions';
 import {
   WALLET_MNEMONIC_KEY,
   WALLET_PASSWORD,
@@ -84,7 +84,8 @@ export async function listStacksWallets() {
       const testnetAddress = getStxAddress({ account, network: 'testnet' });
 
       // Derive public key from private key
-      const publicKey = publicKeyFromPrivateKey(privateKey);
+      const publicKeyBytes = privateKeyToPublic(privateKey);
+      const publicKey = publicKeyToHex(publicKeyBytes);
 
       wallets.push({
         index: i,

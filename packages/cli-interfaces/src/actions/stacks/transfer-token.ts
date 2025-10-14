@@ -8,6 +8,7 @@ import {
   principalCV,
   someCV,
   noneCV,
+  bufferCV,
 } from '@stacks/transactions';
 import { generateWallet, getStxAddress } from '@stacks/wallet-sdk';
 import {
@@ -70,7 +71,7 @@ export async function transferStacksToken() {
     process.exit(1);
   }
   const amount = BigInt(amountStr);
-  if (amount <= 0n) {
+  if (amount <= BigInt(0)) {
     console.error('❌ Invalid amount. Must be a positive number.');
     process.exit(1);
   }
@@ -153,7 +154,7 @@ export async function transferStacksToken() {
           uintCV(amount),
           principalCV(senderAddress),
           principalCV(recipient),
-          args.values.memo ? someCV(Buffer.from(args.values.memo)) : noneCV()
+          args.values.memo ? someCV(bufferCV(Buffer.from(args.values.memo))) : noneCV()
         ],
         senderKey: senderKey,
       });
