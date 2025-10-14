@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import { generateWallet, getStxAddress } from '@stacks/wallet-sdk';
+import { generateWallet, generateNewAccount, getStxAddress } from '@stacks/wallet-sdk';
 import { privateKeyToPublic, publicKeyToHex } from '@stacks/transactions';
 import {
   WALLET_MNEMONIC_KEY,
@@ -55,10 +55,15 @@ export async function listStacksWallets() {
   try {
     // Generate wallet from mnemonic
     console.log('🔐 Generating wallets from mnemonic...\n');
-    const wallet = await generateWallet({
+    let wallet = await generateWallet({
       secretKey: WALLET_MNEMONIC_KEY,
       password: WALLET_PASSWORD,
     });
+
+    // Generate additional accounts if count > 1
+    for (let i = 1; i < count; i++) {
+      wallet = generateNewAccount(wallet);
+    }
 
     if (wallet.accounts.length === 0) {
       console.error('❌ No accounts found in wallet');
@@ -73,9 +78,8 @@ export async function listStacksWallets() {
 
     // Collect wallet information
     const wallets: WalletInfo[] = [];
-    const maxAccounts = Math.min(count, wallet.accounts.length);
 
-    for (let i = 0; i < maxAccounts; i++) {
+    for (let i = 0; i < count; i++) {
       const account = wallet.accounts[i];
       const privateKey = account.stxPrivateKey;
 
