@@ -1,4 +1,4 @@
-import { getMessages, postMessage, openOrder, fillOrder, settleOrder, mintToken, checkBalances } from './actions';
+import { getMessages, postMessage, openOrder, fillOrder, settleOrder, mintToken, checkBalances, checkStacksBalance } from './actions';
 import minimist from 'minimist';
 
 const args = minimist(process.argv.slice(2));
@@ -28,6 +28,9 @@ async function main() {
     case 'check-balances':
       await checkBalances();
       break;
+    case 'check-stacks-balance':
+      await checkStacksBalance();
+      break;
     default:
       console.log('🌉 Intent Bridge CLI');
       console.log('📍 Testing Flow: Arbitrum Sepolia (source) → Base Sepolia (destination)\n');
@@ -38,7 +41,8 @@ async function main() {
       console.log('  mint-token    - Mint test tokens to user address');
       console.log('  check-balances- Check balances across all roles and chains');
       console.log('');
-      console.log('Legacy commands (Stacks):');
+      console.log('Stacks commands:');
+      console.log('  check-stacks-balance - Check STX and token balances on Stacks');
       console.log('  get-messages  - Get messages from Stacks contract');
       console.log('  post-message  - Post message to Stacks contract');
       console.log('');
@@ -49,6 +53,8 @@ async function main() {
       console.log('  pnpm dev settle-order --order-id 0 --solver-address 0x...');
       console.log('  pnpm dev mint-token --chain-id 421614 --token-address 0x... --user-address 0x... --amount 1000');
       console.log('  pnpm dev check-balances');
+      console.log('  pnpm dev check-stacks-balance --address ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM');
+      console.log('  pnpm dev check-stacks-balance  # Uses mnemonic from .env if configured');
       console.log('');
       console.log('Note: Default recipient is 0x297B9793aCe172ff947f1131382de92B57F9C7e6');
       console.log('      Override with --recipient <address> if needed');
