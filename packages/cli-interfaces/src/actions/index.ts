@@ -1,7 +1,8 @@
-export * from './get-messages';
-export * from './post-message';
-export * from './open-order';
-export * from './fill-order';
-export * from './settle-order';
-export * from './mint-token';
-export * from './check-balances';
+// EVM commands (Arbitrum/Base Sepolia)
+export { mintToken, checkBalances } from './evm';
+
+// Stacks commands (Stacks Testnet)
+export { getMessages, postMessage, checkStacksBalance, mintStacksToken, transferStacksToken, listStacksWallets } from './stacks';
+
+// Bridge commands (Cross-chain Intent Bridge)
+export { checkBalances as bridgeCheckBalances, openOrder, fillOrder, fillStacksOrder, settleOrder } from './bridge';

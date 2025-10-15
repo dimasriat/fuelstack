@@ -3,12 +3,31 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // ============================================
-// STACKS CONFIGURATION (for future use)
+// STACKS CONFIGURATION
 // ============================================
 export const WALLET_MNEMONIC_KEY = process.env.WALLET_MNEMONIC_KEY || '';
 export const WALLET_PASSWORD = process.env.WALLET_PASSWORD || '';
+
+// Legacy contract (for get-messages, post-message)
 export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '';
 export const CONTRACT_NAME = process.env.CONTRACT_NAME || '';
+
+// Stacks Testnet Token Contracts (SIP-10)
+export const STACKS_CONTRACTS = {
+  sbtc: {
+    address: process.env.STACKS_SBTC_ADDRESS || 'ST3P57DRBDE7ZRHEGEA3S64H0RFPSR8MV3PJGFSEX',
+    name: process.env.STACKS_SBTC_NAME || 'mock-sbtc',
+  },
+  // Add more SIP-10 tokens as needed
+};
+
+// Stacks Bridge Contracts (FillGate)
+export const STACKS_BRIDGE_CONTRACTS = {
+  fillGate: {
+    address: process.env.STACKS_FILLGATE_ADDRESS || 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM',
+    name: process.env.STACKS_FILLGATE_NAME || 'fill-gate',
+  },
+};
 
 // ============================================
 // EVM CONFIGURATION - Role-based Private Keys
@@ -28,8 +47,12 @@ if (!SOLVER_PRIVATE_KEY) {
 export const ORACLE_PRIVATE_KEY = process.env.ORACLE_PRIVATE_KEY || '';
 // Oracle key is optional unless running settle command
 
-// Default recipient address for testing
+// Default recipient address for testing (EVM)
 export const DEFAULT_RECIPIENT_ADDRESS = '0x297B9793aCe172ff947f1131382de92B57F9C7e6';
+
+// Default Stacks addresses for bridge testing
+export const DEFAULT_STACKS_SOLVER = 'ST1E5EJ7WPTJA1PBP81FMZK4J43NBWC7E80F8W9P5';
+export const DEFAULT_STACKS_RECIPIENT = 'STGGJS6C7SAHZ41ZJ8YKMTEHW1V75TJ6VR74AARE';
 
 // ============================================
 // HARDCODED NETWORK CONFIGURATION
@@ -45,7 +68,7 @@ export const CHAIN_IDS = {
 
 // RPC URLs (public endpoints)
 export const RPC_URLS = {
-  arbitrumSepolia: 'https://arbitrum-sepolia-rpc.publicnode.com',
+  arbitrumSepolia: 'https://sepolia-rollup.arbitrum.io/rpc',
   baseSepolia: 'https://base-sepolia-rpc.publicnode.com',
 };
 

@@ -8,13 +8,13 @@ import {
   stringUtf8CV,
 } from '@stacks/transactions';
 import { generateWallet, getStxAddress } from '@stacks/wallet-sdk';
-import { ask } from '../utils';
+import { ask } from '../../utils';
 import {
   WALLET_MNEMONIC_KEY,
   WALLET_PASSWORD,
   CONTRACT_ADDRESS,
   CONTRACT_NAME,
-} from '../config';
+} from '../../config';
 
 const client = clientFromNetwork(STACKS_MAINNET);
 

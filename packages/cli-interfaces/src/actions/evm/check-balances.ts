@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
-import { createPublicClientForChain, formatTokenAmount, SOURCE_CHAIN, DESTINATION_CHAIN } from '../utils/evm';
-import { SENDER_PRIVATE_KEY, SOLVER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, DEFAULT_RECIPIENT_ADDRESS } from '../config';
-import { ERC20_ABI } from '../abis';
+import { createPublicClientForChain, formatTokenAmount, SOURCE_CHAIN, DESTINATION_CHAIN } from '../../utils/evm';
+import { SENDER_PRIVATE_KEY, SOLVER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, DEFAULT_RECIPIENT_ADDRESS } from '../../config';
+import { ERC20_ABI } from '../../abis';
 import { getAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 

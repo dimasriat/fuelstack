@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
-import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, getTxExplorerUrl, SOURCE_CHAIN, DESTINATION_CHAIN } from '../utils/evm';
-import { SOLVER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, CHAIN_IDS } from '../config';
-import { FILLGATE_ABI, OPENGATE_ABI, ERC20_ABI } from '../abis';
+import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, getTxExplorerUrl, SOURCE_CHAIN, DESTINATION_CHAIN } from '../../utils/evm';
+import { SOLVER_PRIVATE_KEY, SOURCE_CONTRACTS, DESTINATION_CONTRACTS, CHAIN_IDS } from '../../config';
+import { FILLGATE_ABI, OPENGATE_ABI, ERC20_ABI } from '../../abis';
 import { getAddress, toHex } from 'viem';
 
 interface FillOrderArgs {

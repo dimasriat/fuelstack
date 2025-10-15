@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
-import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, getTxExplorerUrl, SOURCE_CHAIN } from '../utils/evm';
-import { ORACLE_PRIVATE_KEY, SOURCE_CONTRACTS } from '../config';
-import { OPENGATE_ABI } from '../abis';
+import { createPublicClientForChain, createWalletClientForChain, formatTokenAmount, getTxExplorerUrl, SOURCE_CHAIN } from '../../utils/evm';
+import { ORACLE_PRIVATE_KEY, SOURCE_CONTRACTS } from '../../config';
+import { OPENGATE_ABI } from '../../abis';
 import { getAddress, toHex } from 'viem';
 
 interface SettleOrderArgs {
