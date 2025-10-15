@@ -15,7 +15,12 @@ import {
   WALLET_MNEMONIC_KEY,
   WALLET_PASSWORD,
 } from '../../config';
-import { MICRO_STX_PER_STX } from '../../utils/stacks';
+import {
+  MICRO_STX_PER_STX,
+  fetchStacksBalances,
+  formatMicroStx,
+  waitForTransaction,
+} from '../../utils/stacks';
 
 const client = clientFromNetwork(STACKS_TESTNET);
 
@@ -127,6 +132,19 @@ export async function transferStacksToken() {
     }
     console.log('');
 
+    // Check STX balance for transaction fees
+    console.log('💰 Checking STX balance for fees...');
+    const balances = await fetchStacksBalances(senderAddress, 'testnet');
+    const stxBalance = BigInt(balances.stx.balance);
+
+    if (stxBalance < BigInt(100000)) { // 0.1 STX minimum for fees
+      console.error('\n❌ Insufficient STX balance for transaction fees');
+      console.error(`   Current balance: ${formatMicroStx(stxBalance)}`);
+      console.error(`   Required: At least 0.1 STX for fees`);
+      console.error('\n💡 Get testnet STX from: https://explorer.hiro.so/sandbox/faucet?chain=testnet');
+      process.exit(1);
+    }
+
     // Create and broadcast transaction
     console.log('🚀 Creating transaction...');
     let tx;
@@ -165,9 +183,45 @@ export async function transferStacksToken() {
       transaction: tx,
     });
 
-    console.log('\n✅ Transfer successful!');
+    // Check if broadcast failed
+    if ('error' in result) {
+      console.error('\n❌ Transaction broadcast failed!');
+      console.error(`   Reason: ${result.error}`);
+      console.error('\n💡 Common causes:');
+      console.error('   - Insufficient STX balance for transaction fees');
+      console.error('   - Insufficient token balance');
+      console.error('   - Network connectivity issues');
+      console.error('   - Invalid recipient address');
+      process.exit(1);
+    }
+
+    console.log(`\n📡 Transaction broadcast successful!`);
     console.log(`🔗 Transaction ID: ${result.txid}`);
     console.log(`🌐 Explorer: https://explorer.hiro.so/txid/${result.txid}?chain=testnet`);
+
+    // Wait for confirmation
+    console.log('\n⏳ Waiting for confirmation (this may take 1-2 minutes)...');
+    const confirmation = await waitForTransaction(result.txid, 'testnet');
+
+    if (confirmation.success) {
+      console.log('\n✅ Transfer successful!');
+      console.log(`📊 Result: ${confirmation.result?.repr || '(ok true)'}`);
+    } else {
+      console.error('\n❌ Transaction failed on-chain!');
+      console.error(`   Status: ${confirmation.status}`);
+      if (confirmation.errorMessage) {
+        console.error(`   Error: ${confirmation.errorMessage}`);
+      }
+      if (confirmation.result?.repr) {
+        console.error(`   Contract response: ${confirmation.result.repr}`);
+      }
+      console.error('\n💡 Common causes:');
+      console.error('   - Insufficient token balance');
+      console.error('   - Invalid recipient address');
+      console.error('   - Transfer amount exceeds balance');
+      console.error('\n🔗 Check the explorer for more details');
+      process.exit(1);
+    }
 
   } catch (error) {
     console.error('\n❌ Error transferring tokens:', error);

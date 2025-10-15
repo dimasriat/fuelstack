@@ -124,3 +124,87 @@ export function parseFungibleTokens(fungibleTokens: Record<string, any>): TokenB
     };
   });
 }
+
+/**
+ * Transaction confirmation result
+ */
+export interface TransactionConfirmation {
+  success: boolean;
+  status: string;
+  result?: any;
+  errorMessage?: string;
+}
+
+/**
+ * Wait for a transaction to be confirmed on-chain
+ * Polls the Hiro API until the transaction is confirmed or times out
+ *
+ * @param txid - Transaction ID (without 0x prefix)
+ * @param network - 'mainnet' or 'testnet'
+ * @param maxAttempts - Maximum number of polling attempts (default: 30)
+ * @param delayMs - Delay between polling attempts in milliseconds (default: 2000)
+ * @returns Transaction confirmation result
+ */
+export async function waitForTransaction(
+  txid: string,
+  network: StacksNetwork = 'testnet',
+  maxAttempts: number = 30,
+  delayMs: number = 2000
+): Promise<TransactionConfirmation> {
+  const apiUrl = getHiroApiUrl(network);
+  // Remove 0x prefix if present
+  const cleanTxid = txid.startsWith('0x') ? txid.slice(2) : txid;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const response = await fetch(`${apiUrl}/extended/v1/tx/0x${cleanTxid}`);
+
+      if (response.ok) {
+        const txData = await response.json();
+
+        // Transaction confirmed successfully
+        if (txData.tx_status === 'success') {
+          return {
+            success: true,
+            status: 'success',
+            result: txData.tx_result
+          };
+        }
+
+        // Transaction failed on-chain
+        if (txData.tx_status === 'abort_by_response') {
+          return {
+            success: false,
+            status: 'abort_by_response',
+            result: txData.tx_result,
+            errorMessage: 'Transaction aborted: contract returned an error'
+          };
+        }
+
+        if (txData.tx_status === 'abort_by_post_condition') {
+          return {
+            success: false,
+            status: 'abort_by_post_condition',
+            errorMessage: 'Transaction aborted: post-condition failed'
+          };
+        }
+
+        // Still pending, continue waiting
+        if (i % 5 === 0 && i > 0) {
+          // Show progress every 10 seconds
+          process.stdout.write('.');
+        }
+      }
+    } catch (error) {
+      // Transaction not found yet or network error, keep waiting
+    }
+
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+
+  return {
+    success: false,
+    status: 'timeout',
+    errorMessage: `Transaction not confirmed after ${(maxAttempts * delayMs) / 1000} seconds`
+  };
+}
