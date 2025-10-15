@@ -1,4 +1,4 @@
-import { arbitrumSepolia, baseSepolia } from 'viem/chains';
+import { arbitrumSepolia } from 'viem/chains';
 
 export interface ChainConfig {
   chainId: number;
@@ -32,17 +32,7 @@ export const SOURCE_CHAINS: Record<number, ChainConfig> = {
   },
 };
 
-// Destination chain with FillGate contract (EVM)
-export const DESTINATION_CHAIN: ChainConfig = {
-  chainId: 84532,
-  name: 'Base Sepolia',
-  rpcUrl: 'https://base-sepolia-rpc.publicnode.com',
-  fillGate: '0xe151FE7360B77973133E2d3D1A0B47A386Ba43Cf', // TODO: Set actual OpenGate contract address after deployment
-  nativeCurrency: 'ETH',
-  viemChain: baseSepolia
-};
-
-// Destination chain with FillGate contract (Stacks)
+// Destination chain with FillGate contract (Stacks only)
 export const STACKS_DESTINATION: StacksChainConfig = {
   network: 'testnet',
   name: 'Stacks Testnet',
@@ -59,10 +49,6 @@ export function getSourceChain(chainId: number): ChainConfig | undefined {
 
 export function getAllSourceChains(): ChainConfig[] {
   return Object.values(SOURCE_CHAINS);
-}
-
-export function getDestinationChain(): ChainConfig {
-  return DESTINATION_CHAIN;
 }
 
 export function getStacksDestination(): StacksChainConfig {

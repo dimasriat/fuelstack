@@ -1,25 +1,19 @@
 import { createPublicClient, getAddress, Log } from 'viem';
 import { SOURCE_CHAIN, createPublicClientForChain, sleep } from './utils';
-import { SOURCE_CONTRACTS, SOLVER_CONFIG, DESTINATION_TYPE } from './config';
+import { SOURCE_CONTRACTS, SOLVER_CONFIG } from './config';
 import { OPENGATE_ABI } from './abis';
-import { OrderFiller } from './filler';
 import { StacksOrderFiller } from './stacksFiller';
 
 export class OrderListener {
   private client;
-  private filler: OrderFiller | StacksOrderFiller;
+  private filler: StacksOrderFiller;
   private unwatch?: () => void;
   private isListening = false;
 
   constructor() {
     this.client = createPublicClientForChain(SOURCE_CHAIN);
-
-    // Initialize appropriate filler based on destination
-    if (DESTINATION_TYPE === 'stacks') {
-      this.filler = new StacksOrderFiller();
-    } else {
-      this.filler = new OrderFiller();
-    }
+    // Destination is always Stacks
+    this.filler = new StacksOrderFiller();
   }
 
   async start(): Promise<void> {
@@ -41,7 +35,7 @@ export class OrderListener {
 
       this.isListening = true;
       console.log('✅ Solver listener started successfully');
-      console.log(`🎯 Destination: ${DESTINATION_TYPE === 'stacks' ? 'Stacks Testnet' : 'Base Sepolia (EVM)'}`);
+      console.log(`🎯 Destination: Stacks Testnet (only)`);
       console.log(`📊 Auto-fill: ${SOLVER_CONFIG.autoFillEnabled ? 'ENABLED' : 'DISABLED'}`);
       console.log(`⏱️  Fill delay: ${SOLVER_CONFIG.fillDelay}ms`);
       console.log(`⛽ Max gas price: ${SOLVER_CONFIG.maxGasPrice} gwei\n`);
@@ -75,9 +69,7 @@ export class OrderListener {
         const sourceChainId = log.args.sourceChainId as bigint;
 
         const isNativeToken = tokenOut === '0x0000000000000000000000000000000000000000';
-        const tokenSymbol = DESTINATION_TYPE === 'stacks'
-          ? (isNativeToken ? 'STX' : 'sBTC')
-          : (isNativeToken ? 'ETH' : 'sBTC');
+        const tokenSymbol = isNativeToken ? 'STX' : 'sBTC';
 
         console.log('🔔 NEW ORDER DETECTED!');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

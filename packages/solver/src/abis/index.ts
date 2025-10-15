@@ -1,4 +1,4 @@
-// OpenGate ABI - only functions we need
+// OpenGateV2 ABI - EVM → Stacks bridge (isolated source chain deployment)
 export const OPENGATE_ABI = [
   {
     inputs: [
@@ -6,9 +6,9 @@ export const OPENGATE_ABI = [
       { name: 'amountIn', type: 'uint256' },
       { name: 'tokenOut', type: 'address' },
       { name: 'amountOut', type: 'uint256' },
-      { name: 'recipient', type: 'address' },
-      { name: 'fillDeadline', type: 'uint256' },
-      { name: 'sourceChainId', type: 'uint256' }
+      { name: 'recipient', type: 'string' },  // Stacks principal address
+      { name: 'fillDeadline', type: 'uint256' }
+      // sourceChainId auto-set to block.chainid in contract
     ],
     name: 'open',
     outputs: [{ name: '', type: 'uint256' }],
@@ -34,7 +34,7 @@ export const OPENGATE_ABI = [
       { name: 'amountIn', type: 'uint256' },
       { name: 'tokenOut', type: 'address' },
       { name: 'amountOut', type: 'uint256' },
-      { name: 'recipient', type: 'address' },
+      { name: 'recipient', type: 'string' },  // ✅ String for cross-chain addresses (Stacks)
       { name: 'fillDeadline', type: 'uint256' },
       { name: 'sourceChainId', type: 'uint256' }
     ],
@@ -58,7 +58,7 @@ export const OPENGATE_ABI = [
       { indexed: false, name: 'amountIn', type: 'uint256' },
       { indexed: false, name: 'tokenOut', type: 'address' },
       { indexed: false, name: 'amountOut', type: 'uint256' },
-      { indexed: false, name: 'recipient', type: 'address' },
+      { indexed: false, name: 'recipient', type: 'string' },  // ✅ String for cross-chain addresses (Stacks)
       { indexed: false, name: 'fillDeadline', type: 'uint256' },
       { indexed: false, name: 'sourceChainId', type: 'uint256' }
     ],

@@ -49,8 +49,8 @@ export async function fillStacksOrder() {
     args: process.argv.slice(3),
     options: {
       'order-id': { type: 'string' },
-      'solver-evm-address': { type: 'string' },
-      'recipient': { type: 'string' }
+      'solver-evm-address': { type: 'string' }
+      // ✅ No --recipient needed! Order now has Stacks address from OpenGateV2
     }
   });
 
@@ -59,7 +59,7 @@ export async function fillStacksOrder() {
   if (!orderIdStr || isNaN(parseInt(orderIdStr))) {
     console.error('❌ Invalid order ID. Use --order-id <number>');
     console.log('\nExample:');
-    console.log('  pnpm dev bridge:fill-stacks-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
+    console.log('  pnpm dev bridge:fill-stacks-order --order-id 1 --solver-evm-address 0x...');
     process.exit(1);
   }
   const orderId = BigInt(orderIdStr);
@@ -90,22 +90,6 @@ export async function fillStacksOrder() {
       process.exit(1);
     }
 
-    // Get Stacks recipient address (required - cannot use EVM address from order)
-    const stacksRecipient = args.values['recipient'];
-    if (!stacksRecipient) {
-      console.error('❌ Stacks recipient address required. Use --recipient <stacks-address>');
-      console.error('   Note: The EVM recipient from the order cannot be used on Stacks');
-      console.log('\nExample:');
-      console.log('  pnpm dev bridge:fill-stacks-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
-      process.exit(1);
-    }
-
-    // Validate it's a Stacks testnet address
-    if (!stacksRecipient.startsWith('S')) {
-      console.error('❌ Invalid Stacks address. Must start with "S" for testnet');
-      process.exit(1);
-    }
-
     // Read order from Arbitrum Sepolia OpenGate
     console.log('🔍 Fetching order details from Arbitrum Sepolia...');
     const sourcePublicClient = createPublicClientForChain(SOURCE_CHAIN);
@@ -123,6 +107,16 @@ export async function fillStacksOrder() {
     // Check if order exists
     if (sender === '0x0000000000000000000000000000000000000000') {
       console.error('❌ Order does not exist');
+      process.exit(1);
+    }
+
+    // ✅ recipient is now a Stacks address from OpenGateV2 (string type)
+    const stacksRecipient = recipient;
+
+    // Validate Stacks address format
+    if (!stacksRecipient.startsWith('S')) {
+      console.error('❌ Invalid Stacks address in order. Must start with "S" for testnet');
+      console.error(`   Got: ${stacksRecipient}`);
       process.exit(1);
     }
 
@@ -198,7 +192,6 @@ export async function fillStacksOrder() {
     console.log(`  Sender: ${sender}`);
     console.log(`  Token Out: ${tokenSymbol} (Stacks)`);
     console.log(`  Amount Out: ${Number(stacksAmountOut) / Math.pow(10, tokenDecimals)} ${tokenSymbol}`);
-    console.log(`  Recipient (EVM): ${recipient}`);
     console.log(`  Recipient (Stacks): ${stacksRecipient}`);
     console.log(`  Fill Deadline (EVM): ${new Date(Number(fillDeadline) * 1000).toLocaleString()}`);
     console.log(`  Fill Deadline (Stacks): ~${fillDeadlineBlocks} blocks`);
