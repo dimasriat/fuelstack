@@ -179,6 +179,15 @@ importers:
 
   packages/solver:
     dependencies:
+      '@stacks/network':
+        specifier: ^7.2.0
+        version: 7.2.0
+      '@stacks/transactions':
+        specifier: ^7.2.0
+        version: 7.2.0
+      '@stacks/wallet-sdk':
+        specifier: ^7.2.0
+        version: 7.2.0
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
