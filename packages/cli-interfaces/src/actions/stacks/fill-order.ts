@@ -33,7 +33,10 @@ interface FillOrderStacksArgs {
   solverEvmAddress?: string;
 }
 
-const SBTC_DECIMALS = 8;
+// Decimal constants for cross-chain conversion
+const EVM_NATIVE_DECIMALS = 18;     // ETH uses 18 decimals
+const STACKS_NATIVE_DECIMALS = 6;   // STX uses 6 decimals (micro-STX)
+const SBTC_DECIMALS = 8;            // sBTC uses 8 decimals on both chains
 
 export async function fillOrderStacks() {
   console.log('💫 Filling cross-chain intent order on Stacks...');
@@ -44,7 +47,8 @@ export async function fillOrderStacks() {
     args: process.argv.slice(3),
     options: {
       'order-id': { type: 'string' },
-      'solver-evm-address': { type: 'string' }
+      'solver-evm-address': { type: 'string' },
+      'recipient': { type: 'string' }
     }
   });
 
@@ -53,7 +57,7 @@ export async function fillOrderStacks() {
   if (!orderIdStr || isNaN(parseInt(orderIdStr))) {
     console.error('❌ Invalid order ID. Use --order-id <number>');
     console.log('\nExample:');
-    console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x...');
+    console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
     process.exit(1);
   }
   const orderId = BigInt(orderIdStr);
@@ -82,6 +86,22 @@ export async function fillOrderStacks() {
       process.exit(1);
     }
 
+    // Get Stacks recipient address (required - cannot use EVM address from order)
+    const stacksRecipient = args.values['recipient'];
+    if (!stacksRecipient) {
+      console.error('❌ Stacks recipient address required. Use --recipient <stacks-address>');
+      console.error('   Note: The EVM recipient from the order cannot be used on Stacks');
+      console.log('\nExample:');
+      console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
+      process.exit(1);
+    }
+
+    // Validate it's a Stacks testnet address
+    if (!stacksRecipient.startsWith('S')) {
+      console.error('❌ Invalid Stacks address. Must start with "S" for testnet');
+      process.exit(1);
+    }
+
     // Read order from Arbitrum Sepolia OpenGate
     console.log('🔍 Fetching order details from Arbitrum Sepolia...');
     const sourcePublicClient = createPublicClientForChain(SOURCE_CHAIN);
@@ -101,6 +121,20 @@ export async function fillOrderStacks() {
       console.error('❌ Order does not exist');
       process.exit(1);
     }
+
+    // Convert amountOut from EVM decimals to Stacks decimals
+    const isNativeToken = tokenOut === '0x0000000000000000000000000000000000000000';
+    let stacksAmountOut = amountOut;
+
+    if (isNativeToken) {
+      // Native token: Convert from 18 decimals (ETH) to 6 decimals (STX)
+      // Divide by 10^12 to convert from wei to micro-STX
+      const decimalDifference = EVM_NATIVE_DECIMALS - STACKS_NATIVE_DECIMALS; // 18 - 6 = 12
+      stacksAmountOut = amountOut / BigInt(10 ** decimalDifference);
+
+      console.log(`🔄 Converting amount: ${amountOut} wei → ${stacksAmountOut} micro-STX`);
+    }
+    // For sBTC: No conversion needed (both chains use 8 decimals)
 
     // Check order status on source chain
     const orderStatus = await sourcePublicClient.readContract({
@@ -142,16 +176,16 @@ export async function fillOrderStacks() {
     const blocksUntilDeadline = Math.floor(timeUntilDeadline / 6);
     const fillDeadlineBlocks = currentBlock + blocksUntilDeadline;
 
-    const isNativeToken = tokenOut === '0x0000000000000000000000000000000000000000';
     const tokenSymbol = isNativeToken ? 'STX' : 'sBTC';
-    const tokenDecimals = isNativeToken ? 6 : SBTC_DECIMALS;
+    const tokenDecimals = isNativeToken ? STACKS_NATIVE_DECIMALS : SBTC_DECIMALS;
 
     console.log('\n📋 Order Details:');
     console.log(`  Order ID: ${orderId}`);
     console.log(`  Sender: ${sender}`);
     console.log(`  Token Out: ${tokenSymbol} (Stacks)`);
-    console.log(`  Amount Out: ${Number(amountOut) / Math.pow(10, tokenDecimals)} ${tokenSymbol}`);
-    console.log(`  Recipient: ${recipient}`);
+    console.log(`  Amount Out: ${Number(stacksAmountOut) / Math.pow(10, tokenDecimals)} ${tokenSymbol}`);
+    console.log(`  Recipient (EVM): ${recipient}`);
+    console.log(`  Recipient (Stacks): ${stacksRecipient}`);
     console.log(`  Fill Deadline (EVM): ${new Date(Number(fillDeadline) * 1000).toLocaleString()}`);
     console.log(`  Fill Deadline (Stacks): ~${fillDeadlineBlocks} blocks`);
     console.log(`  Source Chain ID: ${sourceChainId}`);
@@ -172,11 +206,11 @@ export async function fillOrderStacks() {
 
     if (isNativeToken) {
       // Need STX for payment + fees
-      const requiredStx = amountOut + BigInt(500000); // amount + 0.5 STX for fees
+      const requiredStx = stacksAmountOut + BigInt(500000); // amount + 0.5 STX for fees
       if (stxBalance < requiredStx) {
         console.error('\\n❌ Insufficient STX balance');
         console.error(`   Current: ${formatMicroStx(stxBalance)}`);
-        console.error(`   Required: ${formatMicroStx(requiredStx.toString())} (${formatMicroStx(amountOut.toString())} + fees)`);
+        console.error(`   Required: ${formatMicroStx(requiredStx.toString())} (${formatMicroStx(stacksAmountOut.toString())} + fees)`);
         console.error('\\n💡 Get testnet STX from: https://explorer.hiro.so/sandbox/faucet?chain=testnet');
         process.exit(1);
       }
@@ -195,10 +229,10 @@ export async function fillOrderStacks() {
       const sbtcToken = balances.fungible_tokens?.[`${STACKS_CONTRACTS.sbtc.address}.${STACKS_CONTRACTS.sbtc.name}::${STACKS_CONTRACTS.sbtc.name}`];
       const sbtcBalance = sbtcToken ? BigInt(sbtcToken.balance) : BigInt(0);
 
-      if (sbtcBalance < amountOut) {
+      if (sbtcBalance < stacksAmountOut) {
         console.error('\\n❌ Insufficient sBTC balance');
         console.error(`   Current: ${Number(sbtcBalance) / Math.pow(10, SBTC_DECIMALS)} sBTC`);
-        console.error(`   Required: ${Number(amountOut) / Math.pow(10, SBTC_DECIMALS)} sBTC`);
+        console.error(`   Required: ${Number(stacksAmountOut) / Math.pow(10, SBTC_DECIMALS)} sBTC`);
         process.exit(1);
       }
       console.log(`✅ sBTC balance: ${Number(sbtcBalance) / Math.pow(10, SBTC_DECIMALS)} sBTC`);
@@ -221,8 +255,8 @@ export async function fillOrderStacks() {
         functionName: 'fill-native',
         functionArgs: [
           uintCV(Number(orderId)),
-          uintCV(Number(amountOut)),
-          principalCV(recipient),
+          uintCV(Number(stacksAmountOut)),
+          principalCV(stacksRecipient),
           stringAsciiCV(solverEvmAddress),
           uintCV(fillDeadlineBlocks),
           uintCV(Number(sourceChainId))
@@ -239,8 +273,8 @@ export async function fillOrderStacks() {
         functionArgs: [
           uintCV(Number(orderId)),
           contractPrincipalCV(STACKS_CONTRACTS.sbtc.address, STACKS_CONTRACTS.sbtc.name),
-          uintCV(Number(amountOut)),
-          principalCV(recipient),
+          uintCV(Number(stacksAmountOut)),
+          principalCV(stacksRecipient),
           stringAsciiCV(solverEvmAddress),
           uintCV(fillDeadlineBlocks),
           uintCV(Number(sourceChainId))

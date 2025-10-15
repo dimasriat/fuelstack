@@ -230,7 +230,7 @@ function showHelp() {
   console.log('  pnpm dev bridge:fill-order --order-id 1');
   console.log('');
   console.log('  # Stacks: Fill order on Stacks (reads order from Arbitrum)');
-  console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x...');
+  console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
   console.log('');
 
   console.log('⚙️  SETUP:');
