@@ -9,7 +9,7 @@ import {
   stringAsciiCV,
 } from '@stacks/transactions';
 import type { StxPostCondition, FungiblePostCondition } from '@stacks/transactions';
-import { generateWallet, getStxAddress } from '@stacks/wallet-sdk';
+import { generateWallet, generateNewAccount, getStxAddress } from '@stacks/wallet-sdk';
 import {
   WALLET_MNEMONIC_KEY,
   WALLET_PASSWORD,
@@ -73,11 +73,13 @@ export async function fillStacksOrder() {
   try {
     // Generate Stacks wallet
     console.log('🔐 Generating Stacks wallet...');
-    const wallet = await generateWallet({
+    let wallet = await generateWallet({
       secretKey: WALLET_MNEMONIC_KEY,
       password: WALLET_PASSWORD,
     });
-    const account = wallet.accounts[0];
+    // Generate account 1 (solver account)
+    wallet = generateNewAccount(wallet);
+    const account = wallet.accounts[1];
     const senderKey = account.stxPrivateKey;
     const senderAddress = getStxAddress({ account, network: 'testnet' });
 
@@ -124,6 +126,12 @@ export async function fillStacksOrder() {
       process.exit(1);
     }
 
+    // Debug: Show raw order data from Arbitrum
+    console.log('\n🔍 DEBUG: Raw order data from Arbitrum:');
+    console.log(`  amountOut (raw): ${amountOut} wei`);
+    console.log(`  amountOut (ETH): ${Number(amountOut) / 1e18} ETH`);
+    console.log(`  tokenOut: ${tokenOut}`);
+
     // Convert amountOut from EVM decimals to Stacks decimals
     const isNativeToken = tokenOut === '0x0000000000000000000000000000000000000000';
     let stacksAmountOut = amountOut;
@@ -134,7 +142,11 @@ export async function fillStacksOrder() {
       const decimalDifference = EVM_NATIVE_DECIMALS - STACKS_NATIVE_DECIMALS; // 18 - 6 = 12
       stacksAmountOut = amountOut / BigInt(10 ** decimalDifference);
 
-      console.log(`🔄 Converting amount: ${amountOut} wei → ${stacksAmountOut} micro-STX`);
+      console.log(`\n🔄 Decimal Conversion:`);
+      console.log(`  EVM: ${amountOut} wei (18 decimals)`);
+      console.log(`  ÷ 10^${decimalDifference} (convert 18→6 decimals)`);
+      console.log(`  Stacks: ${stacksAmountOut} micro-STX (6 decimals)`);
+      console.log(`  Stacks: ${Number(stacksAmountOut) / 1e6} STX`);
     }
     // For sBTC: No conversion needed (both chains use 8 decimals)
 
@@ -208,7 +220,14 @@ export async function fillStacksOrder() {
 
     if (isNativeToken) {
       // Need STX for payment + fees
-      const requiredStx = stacksAmountOut + BigInt(500000); // amount + 0.5 STX for fees
+      const requiredStx = stacksAmountOut + BigInt(10000); // amount + 0.01 STX for fees
+
+      console.log(`\n💰 Balance Check:`);
+      console.log(`   Current balance: ${stxBalance} micro-STX (${Number(stxBalance) / 1e6} STX)`);
+      console.log(`   Fill amount:     ${stacksAmountOut} micro-STX (${Number(stacksAmountOut) / 1e6} STX)`);
+      console.log(`   Est. tx fee:     10000 micro-STX (0.01 STX)`);
+      console.log(`   Total required:  ${requiredStx} micro-STX (${Number(requiredStx) / 1e6} STX)`);
+
       if (stxBalance < requiredStx) {
         console.error('\\n❌ Insufficient STX balance');
         console.error(`   Current: ${formatMicroStx(stxBalance)}`);
@@ -216,13 +235,13 @@ export async function fillStacksOrder() {
         console.error('\\n💡 Get testnet STX from: https://explorer.hiro.so/sandbox/faucet?chain=testnet');
         process.exit(1);
       }
-      console.log(`✅ STX balance: ${formatMicroStx(stxBalance)}`);
+      console.log(`✅ Sufficient balance`);
     } else {
       // Need sBTC for payment + STX for fees
-      if (stxBalance < BigInt(500000)) {
+      if (stxBalance < BigInt(10000)) {
         console.error('\\n❌ Insufficient STX balance for transaction fees');
         console.error(`   Current: ${formatMicroStx(stxBalance)}`);
-        console.error(`   Required: At least 0.5 STX for fees`);
+        console.error(`   Required: At least 0.01 STX for fees`);
         console.error('\\n💡 Get testnet STX from: https://explorer.hiro.so/sandbox/faucet?chain=testnet');
         process.exit(1);
       }

@@ -10,20 +10,29 @@ export interface ChainConfig {
   viemChain: any;
 }
 
+export interface StacksChainConfig {
+  network: 'testnet' | 'mainnet';
+  name: string;
+  apiUrl: string;
+  fillGateAddress: string;
+  fillGateName: string;
+  nativeCurrency: string;
+}
+
 // Source chains with OpenGate contracts
 export const SOURCE_CHAINS: Record<number, ChainConfig> = {
   // Arbitrum Sepolia
   421614: {
     chainId: 421614,
     name: 'Arbitrum Sepolia',
-    rpcUrl: 'https://arbitrum-sepolia-rpc.publicnode.com',
+    rpcUrl: 'https://sepolia-rollup.arbitrum.io/rpc',
     openGate: '0xc2287A4DF839A6ca7B97202178914208BD1B18E2', // TODO: Set actual OpenGate contract address after deployment
     nativeCurrency: 'ETH',
     viemChain: arbitrumSepolia
   },
 };
 
-// Destination chain with FillGate contract
+// Destination chain with FillGate contract (EVM)
 export const DESTINATION_CHAIN: ChainConfig = {
   chainId: 84532,
   name: 'Base Sepolia',
@@ -31,6 +40,16 @@ export const DESTINATION_CHAIN: ChainConfig = {
   fillGate: '0xe151FE7360B77973133E2d3D1A0B47A386Ba43Cf', // TODO: Set actual OpenGate contract address after deployment
   nativeCurrency: 'ETH',
   viemChain: baseSepolia
+};
+
+// Destination chain with FillGate contract (Stacks)
+export const STACKS_DESTINATION: StacksChainConfig = {
+  network: 'testnet',
+  name: 'Stacks Testnet',
+  apiUrl: 'https://api.testnet.hiro.so',
+  fillGateAddress: 'ST3P57DRBDE7ZRHEGEA3S64H0RFPSR8MV3PJGFSEX', // Will be overridden by config
+  fillGateName: 'fill-gate', // Will be overridden by config
+  nativeCurrency: 'STX',
 };
 
 // Helper functions
@@ -44,4 +63,8 @@ export function getAllSourceChains(): ChainConfig[] {
 
 export function getDestinationChain(): ChainConfig {
   return DESTINATION_CHAIN;
+}
+
+export function getStacksDestination(): StacksChainConfig {
+  return STACKS_DESTINATION;
 }

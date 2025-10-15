@@ -1,11 +1,14 @@
 import { OpenGateListener } from '../listeners/openGateListener';
 import { FillGateListener } from '../listeners/fillGateListener';
-import { getAllSourceChains, getDestinationChain, ChainConfig } from '../config/chains';
+import { StacksFillGateListener } from '../listeners/stacksFillGateListener';
+import { getAllSourceChains, getDestinationChain, getStacksDestination, ChainConfig } from '../config/chains';
+import { config } from '../config/config';
 import { db } from '../database/db';
 
 export class MultiChainManager {
   private openGateListeners: Map<number, OpenGateListener> = new Map();
   private fillGateListener?: FillGateListener;
+  private stacksFillGateListener?: StacksFillGateListener;
 
   constructor() {
     this.initializeListeners();
@@ -25,12 +28,17 @@ export class MultiChainManager {
       this.openGateListeners.set(chain.chainId, listener);
     }
 
-    // Initialize FillGate listener for destination chain
-    const destinationChain = getDestinationChain();
-    if (destinationChain.fillGate && destinationChain.fillGate !== '0x...') {
-      this.fillGateListener = new FillGateListener(destinationChain);
-    } else {
-      console.log(`⚠️  FillGate listener not initialized - address not configured`);
+    // Initialize FillGate listener based on destination type
+    if (config.destination.type === 'evm') {
+      const destinationChain = getDestinationChain();
+      if (destinationChain.fillGate && destinationChain.fillGate !== '0x...') {
+        this.fillGateListener = new FillGateListener(destinationChain);
+      } else {
+        console.log(`⚠️  EVM FillGate listener not initialized - address not configured`);
+      }
+    } else if (config.destination.type === 'stacks') {
+      const stacksDestination = getStacksDestination();
+      this.stacksFillGateListener = new StacksFillGateListener(stacksDestination);
     }
   }
 
@@ -48,14 +56,21 @@ export class MultiChainManager {
       }
     }
 
-    // Start FillGate listener
+    // Start FillGate listener (EVM or Stacks)
+    console.log('\n📡 Starting Destination Chain Listener:');
     if (this.fillGateListener) {
       try {
-        console.log('\n📡 Starting Destination Chain Listener:');
         await this.fillGateListener.start();
         console.log(`   ✅ ${getDestinationChain().name} FillGate listener started`);
       } catch (error) {
-        console.error(`   ❌ Failed to start FillGate listener:`, error);
+        console.error(`   ❌ Failed to start EVM FillGate listener:`, error);
+      }
+    } else if (this.stacksFillGateListener) {
+      try {
+        await this.stacksFillGateListener.start();
+        console.log(`   ✅ ${getStacksDestination().name} FillGate listener started`);
+      } catch (error) {
+        console.error(`   ❌ Failed to start Stacks FillGate listener:`, error);
       }
     }
 
@@ -76,13 +91,20 @@ export class MultiChainManager {
       }
     }
 
-    // Stop FillGate listener
+    // Stop FillGate listener (EVM or Stacks)
     if (this.fillGateListener) {
       try {
         await this.fillGateListener.stop();
         console.log(`   ✅ ${getDestinationChain().name} FillGate listener stopped`);
       } catch (error) {
-        console.error(`   ❌ Error stopping FillGate listener:`, error);
+        console.error(`   ❌ Error stopping EVM FillGate listener:`, error);
+      }
+    } else if (this.stacksFillGateListener) {
+      try {
+        await this.stacksFillGateListener.stop();
+        console.log(`   ✅ ${getStacksDestination().name} FillGate listener stopped`);
+      } catch (error) {
+        console.error(`   ❌ Error stopping Stacks FillGate listener:`, error);
       }
     }
 
@@ -104,9 +126,14 @@ export class MultiChainManager {
       console.log(`     • ${chain?.name} (${chainId}): ${chain?.openGate}`);
     }
 
-    const destChain = getDestinationChain();
     console.log('   Destination Chain (FillGate):');
-    console.log(`     • ${destChain.name} (${destChain.chainId}): ${destChain.fillGate}`);
+    if (config.destination.type === 'evm') {
+      const destChain = getDestinationChain();
+      console.log(`     • ${destChain.name} (${destChain.chainId}): ${destChain.fillGate}`);
+    } else if (config.destination.type === 'stacks') {
+      const stacksDest = getStacksDestination();
+      console.log(`     • ${stacksDest.name} (${stacksDest.network}): ${stacksDest.fillGateAddress}.${stacksDest.fillGateName}`);
+    }
     
     console.log('');
   }
