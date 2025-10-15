@@ -10,6 +10,7 @@ import {
   transferStacksToken,
   listStacksWallets,
   // Bridge actions
+  bridgeCheckBalances,
   openOrder,
   fillOrder,
   settleOrder
@@ -91,6 +92,9 @@ async function handleStacksCommand(action: string) {
 
 async function handleBridgeCommand(action: string) {
   switch (action) {
+    case 'check-balances':
+      await bridgeCheckBalances();
+      break;
     case 'open-order':
       await openOrder();
       break;
@@ -177,9 +181,10 @@ function showHelp() {
 
   console.log('🌉 BRIDGE COMMANDS (Cross-chain Intent Bridge)');
   console.log('─'.repeat(60));
-  console.log('  bridge:open-order    Open a new cross-chain intent order');
-  console.log('  bridge:fill-order    Fill an existing order');
-  console.log('  bridge:settle-order  Settle a filled order (oracle only)');
+  console.log('  bridge:check-balances  Check balances across EVM and Stacks chains');
+  console.log('  bridge:open-order      Open a new cross-chain intent order');
+  console.log('  bridge:fill-order      Fill an existing order');
+  console.log('  bridge:settle-order    Settle a filled order (oracle only)');
   console.log('');
 
   console.log('═'.repeat(60));
@@ -202,6 +207,11 @@ function showHelp() {
   console.log('  # Stacks: List wallet addresses');
   console.log('  pnpm dev stacks:list-wallets --count 3');
   console.log('  pnpm dev stacks:list-wallets --hide-private  # Hide private keys');
+  console.log('');
+  console.log('  # Bridge: Check balances across all chains');
+  console.log('  pnpm dev bridge:check-balances');
+  console.log('  pnpm dev bridge:check-balances --stacks-recipient ST2...  # Custom Stacks recipient');
+  console.log('  pnpm dev bridge:check-balances --save balances.json  # Save to file');
   console.log('');
   console.log('  # Bridge: Open cross-chain order');
   console.log('  pnpm dev bridge:open-order --amount-in 100 --amount-out 0.001 --token-out sbtc');
