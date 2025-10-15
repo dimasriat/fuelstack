@@ -136,6 +136,34 @@ export interface TransactionConfirmation {
 }
 
 /**
+ * Fetch the current nonce for a Stacks address
+ * @param address - Stacks address
+ * @param network - 'mainnet' or 'testnet'
+ * @returns Current nonce value
+ */
+export async function fetchAccountNonce(
+  address: string,
+  network: StacksNetwork = 'testnet'
+): Promise<number> {
+  const apiUrl = getHiroApiUrl(network);
+  const url = `${apiUrl}/v2/accounts/${address}?proof=0`;
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Hiro API error: ${response.status} ${response.statusText}`);
+    }
+
+    const accountInfo = await response.json();
+    return accountInfo.nonce;
+  } catch (error) {
+    console.error('Error fetching account nonce:', error);
+    throw error;
+  }
+}
+
+/**
  * Wait for a transaction to be confirmed on-chain
  * Polls the Hiro API until the transaction is confirmed or times out
  *

@@ -20,6 +20,7 @@ import {
   fetchStacksBalances,
   formatMicroStx,
   waitForTransaction,
+  fetchAccountNonce,
   MICRO_STX_PER_STX,
 } from '../../utils/stacks';
 import { createPublicClientForChain, SOURCE_CHAIN } from '../../utils/evm';
@@ -242,6 +243,11 @@ export async function fillOrderStacks() {
     // No separate approve is needed like on EVM - the sender must have the tokens and the contract
     // will call transfer directly
 
+    // Fetch current nonce for the account
+    console.log('🔍 Fetching account nonce...');
+    const nonce = await fetchAccountNonce(senderAddress, 'testnet');
+    console.log(`✅ Current nonce: ${nonce}`);
+
     // Create and broadcast fill transaction
     console.log('\\n🚀 Creating fill transaction on Stacks...');
     let tx;
@@ -250,6 +256,7 @@ export async function fillOrderStacks() {
       // Fill with native STX
       tx = await makeContractCall({
         client,
+        network: 'testnet',
         contractAddress: STACKS_BRIDGE_CONTRACTS.fillGate.address,
         contractName: STACKS_BRIDGE_CONTRACTS.fillGate.name,
         functionName: 'fill-native',
@@ -262,11 +269,13 @@ export async function fillOrderStacks() {
           uintCV(Number(sourceChainId))
         ],
         senderKey: senderKey,
+        nonce: BigInt(nonce),
       });
     } else {
       // Fill with SIP-10 token (sBTC)
       tx = await makeContractCall({
         client,
+        network: 'testnet',
         contractAddress: STACKS_BRIDGE_CONTRACTS.fillGate.address,
         contractName: STACKS_BRIDGE_CONTRACTS.fillGate.name,
         functionName: 'fill-token',
@@ -280,6 +289,7 @@ export async function fillOrderStacks() {
           uintCV(Number(sourceChainId))
         ],
         senderKey: senderKey,
+        nonce: BigInt(nonce),
       });
     }
 
@@ -297,6 +307,9 @@ export async function fillOrderStacks() {
       console.error('   - Deadline exceeded');
       console.error('   - Insufficient balance');
       console.error('   - Network connectivity issues');
+      console.error('   - Invalid contract address or name');
+      console.log('\\n📋 Full error details:');
+      console.log(JSON.stringify(result, null, 2));
       process.exit(1);
     }
 
@@ -326,6 +339,7 @@ export async function fillOrderStacks() {
       console.error('   - Deadline exceeded (u101)');
       console.error('   - Insufficient balance');
       console.error('\\n🔗 Check the explorer for more details');
+      console.log(JSON.stringify(confirmation, null, 2));
       process.exit(1);
     }
 

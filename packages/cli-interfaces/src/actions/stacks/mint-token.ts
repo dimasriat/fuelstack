@@ -15,6 +15,7 @@ import {
   fetchStacksBalances,
   formatMicroStx,
   waitForTransaction,
+  fetchAccountNonce,
 } from '../../utils/stacks';
 
 const client = clientFromNetwork(STACKS_TESTNET);
@@ -113,10 +114,16 @@ export async function mintStacksToken() {
       process.exit(1);
     }
 
+    // Fetch current nonce for the account
+    console.log('🔍 Fetching account nonce...');
+    const nonce = await fetchAccountNonce(senderAddress, 'testnet');
+    console.log(`✅ Current nonce: ${nonce}`);
+
     // Create contract call transaction
-    console.log('🚀 Creating mint transaction...');
+    console.log('\n🚀 Creating mint transaction...');
     const tx = await makeContractCall({
       client,
+      network: 'testnet',
       contractAddress: contractAddress,
       contractName: contractName,
       functionName: 'mint',
@@ -125,6 +132,7 @@ export async function mintStacksToken() {
         principalCV(recipient)
       ],
       senderKey: senderKey,
+      nonce: BigInt(nonce),
     });
 
     // Broadcast transaction
@@ -142,6 +150,7 @@ export async function mintStacksToken() {
       console.error('   - Sender lacks permission to mint tokens');
       console.error('   - Network connectivity issues');
       console.error('   - Invalid contract address or name');
+      console.log(JSON.stringify(result, null, 2));
       process.exit(1);
     }
 

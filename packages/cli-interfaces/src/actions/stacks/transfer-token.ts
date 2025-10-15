@@ -20,6 +20,7 @@ import {
   fetchStacksBalances,
   formatMicroStx,
   waitForTransaction,
+  fetchAccountNonce,
 } from '../../utils/stacks';
 
 const client = clientFromNetwork(STACKS_TESTNET);
@@ -145,18 +146,25 @@ export async function transferStacksToken() {
       process.exit(1);
     }
 
+    // Fetch current nonce for the account
+    console.log('🔍 Fetching account nonce...');
+    const nonce = await fetchAccountNonce(senderAddress, 'testnet');
+    console.log(`✅ Current nonce: ${nonce}`);
+
     // Create and broadcast transaction
-    console.log('🚀 Creating transaction...');
+    console.log('\n🚀 Creating transaction...');
     let tx;
 
     if (tokenType === 'stx') {
       // Transfer STX using makeSTXTokenTransfer
       tx = await makeSTXTokenTransfer({
         client,
+        network: 'testnet',
         recipient: recipient,
         amount: amount,
         senderKey: senderKey,
         memo: args.values.memo || '',
+        nonce: BigInt(nonce),
       });
     } else {
       // Transfer SIP-10 token using contract call
@@ -165,6 +173,7 @@ export async function transferStacksToken() {
 
       tx = await makeContractCall({
         client,
+        network: 'testnet',
         contractAddress: contractAddress,
         contractName: contractName,
         functionName: 'transfer',
@@ -175,6 +184,7 @@ export async function transferStacksToken() {
           args.values.memo ? someCV(bufferCV(Buffer.from(args.values.memo))) : noneCV()
         ],
         senderKey: senderKey,
+        nonce: BigInt(nonce),
       });
     }
 
@@ -192,6 +202,8 @@ export async function transferStacksToken() {
       console.error('   - Insufficient token balance');
       console.error('   - Network connectivity issues');
       console.error('   - Invalid recipient address');
+      console.log('\n📋 Full error details:');
+      console.log(JSON.stringify(result, null, 2));
       process.exit(1);
     }
 
