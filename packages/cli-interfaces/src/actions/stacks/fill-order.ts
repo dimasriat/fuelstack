@@ -8,6 +8,7 @@ import {
   contractPrincipalCV,
   stringAsciiCV,
 } from '@stacks/transactions';
+import type { StxPostCondition, FungiblePostCondition } from '@stacks/transactions';
 import { generateWallet, getStxAddress } from '@stacks/wallet-sdk';
 import {
   WALLET_MNEMONIC_KEY,
@@ -253,6 +254,17 @@ export async function fillOrderStacks() {
     let tx;
 
     if (isNativeToken) {
+      // Create post-condition for STX transfer (v7 API)
+      // The solver authorizes sending up to stacksAmountOut STX
+      const stxPostCondition: StxPostCondition = {
+        type: 'stx-postcondition',
+        address: senderAddress,
+        condition: 'lte',  // less than or equal
+        amount: stacksAmountOut.toString(),
+      };
+
+      console.log('📋 Post-condition: Authorize STX transfer of up to', formatMicroStx(stacksAmountOut));
+
       // Fill with native STX
       tx = await makeContractCall({
         client,
@@ -268,10 +280,27 @@ export async function fillOrderStacks() {
           uintCV(fillDeadlineBlocks),
           uintCV(Number(sourceChainId))
         ],
+        postConditions: [stxPostCondition],
+        postConditionMode: 'deny',
         senderKey: senderKey,
         nonce: BigInt(nonce),
       });
     } else {
+      // Create post-condition for sBTC transfer (v7 API)
+      // The solver authorizes sending up to stacksAmountOut sBTC
+      // Asset format: address.contractName::assetName
+      const assetIdentifier = `${STACKS_CONTRACTS.sbtc.address}.${STACKS_CONTRACTS.sbtc.name}::${STACKS_CONTRACTS.sbtc.name}` as `${string}.${string}::${string}`;
+
+      const fungiblePostCondition: FungiblePostCondition = {
+        type: 'ft-postcondition',
+        address: senderAddress,
+        condition: 'lte',  // less than or equal
+        amount: stacksAmountOut.toString(),
+        asset: assetIdentifier,
+      };
+
+      console.log(`📋 Post-condition: Authorize sBTC transfer of up to ${Number(stacksAmountOut) / Math.pow(10, SBTC_DECIMALS)} sBTC`);
+
       // Fill with SIP-10 token (sBTC)
       tx = await makeContractCall({
         client,
@@ -288,6 +317,8 @@ export async function fillOrderStacks() {
           uintCV(fillDeadlineBlocks),
           uintCV(Number(sourceChainId))
         ],
+        postConditions: [fungiblePostCondition],
+        postConditionMode: 'deny',
         senderKey: senderKey,
         nonce: BigInt(nonce),
       });
