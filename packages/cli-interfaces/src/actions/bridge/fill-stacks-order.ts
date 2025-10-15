@@ -30,7 +30,7 @@ import { getAddress, toHex } from 'viem';
 
 const client = clientFromNetwork(STACKS_TESTNET);
 
-interface FillOrderStacksArgs {
+interface FillStacksOrderArgs {
   orderId: string;
   solverEvmAddress?: string;
 }
@@ -40,7 +40,7 @@ const EVM_NATIVE_DECIMALS = 18;     // ETH uses 18 decimals
 const STACKS_NATIVE_DECIMALS = 6;   // STX uses 6 decimals (micro-STX)
 const SBTC_DECIMALS = 8;            // sBTC uses 8 decimals on both chains
 
-export async function fillOrderStacks() {
+export async function fillStacksOrder() {
   console.log('💫 Filling cross-chain intent order on Stacks...');
   console.log(`📍 Source: Arbitrum Sepolia → Destination: Stacks Testnet\n`);
 
@@ -59,7 +59,7 @@ export async function fillOrderStacks() {
   if (!orderIdStr || isNaN(parseInt(orderIdStr))) {
     console.error('❌ Invalid order ID. Use --order-id <number>');
     console.log('\nExample:');
-    console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
+    console.log('  pnpm dev bridge:fill-stacks-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
     process.exit(1);
   }
   const orderId = BigInt(orderIdStr);
@@ -94,7 +94,7 @@ export async function fillOrderStacks() {
       console.error('❌ Stacks recipient address required. Use --recipient <stacks-address>');
       console.error('   Note: The EVM recipient from the order cannot be used on Stacks');
       console.log('\nExample:');
-      console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
+      console.log('  pnpm dev bridge:fill-stacks-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
       process.exit(1);
     }
 

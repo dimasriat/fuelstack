@@ -2,7 +2,7 @@
 export { mintToken, checkBalances } from './evm';
 
 // Stacks commands (Stacks Testnet)
-export { getMessages, postMessage, checkStacksBalance, mintStacksToken, transferStacksToken, listStacksWallets, fillOrderStacks } from './stacks';
+export { getMessages, postMessage, checkStacksBalance, mintStacksToken, transferStacksToken, listStacksWallets } from './stacks';
 
 // Bridge commands (Cross-chain Intent Bridge)
-export { checkBalances as bridgeCheckBalances, openOrder, fillOrder, settleOrder } from './bridge';
+export { checkBalances as bridgeCheckBalances, openOrder, fillOrder, fillStacksOrder, settleOrder } from './bridge';

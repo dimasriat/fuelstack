@@ -9,11 +9,11 @@ import {
   mintStacksToken,
   transferStacksToken,
   listStacksWallets,
-  fillOrderStacks,
   // Bridge actions
   bridgeCheckBalances,
   openOrder,
   fillOrder,
+  fillStacksOrder,
   settleOrder
 } from './actions';
 import minimist from 'minimist';
@@ -78,9 +78,6 @@ async function handleStacksCommand(action: string) {
     case 'list-wallets':
       await listStacksWallets();
       break;
-    case 'fill-order':
-      await fillOrderStacks();
-      break;
     case 'get-messages':
       await getMessages();
       break;
@@ -104,6 +101,9 @@ async function handleBridgeCommand(action: string) {
       break;
     case 'fill-order':
       await fillOrder();
+      break;
+    case 'fill-stacks-order':
+      await fillStacksOrder();
       break;
     case 'settle-order':
       await settleOrder();
@@ -179,17 +179,17 @@ function showHelp() {
   console.log('  stacks:transfer      Transfer STX or SIP-10 tokens');
   console.log('  stacks:check-balance Check STX and token balances (--mainnet for mainnet)');
   console.log('  stacks:list-wallets  List wallet addresses and keys from mnemonic');
-  console.log('  stacks:fill-order    Fill cross-chain order on Stacks (reads from Arbitrum)');
   console.log('  stacks:get-messages  Get messages from contract (legacy)');
   console.log('  stacks:post-message  Post message to contract (legacy)');
   console.log('');
 
   console.log('🌉 BRIDGE COMMANDS (Cross-chain Intent Bridge)');
   console.log('─'.repeat(60));
-  console.log('  bridge:check-balances  Check balances across EVM and Stacks chains');
-  console.log('  bridge:open-order      Open a new cross-chain intent order');
-  console.log('  bridge:fill-order      Fill an existing order');
-  console.log('  bridge:settle-order    Settle a filled order (oracle only)');
+  console.log('  bridge:check-balances    Check balances across EVM and Stacks chains');
+  console.log('  bridge:open-order        Open a new cross-chain intent order');
+  console.log('  bridge:fill-order        Fill an order on EVM (Base Sepolia)');
+  console.log('  bridge:fill-stacks-order Fill an order on Stacks (reads from Arbitrum)');
+  console.log('  bridge:settle-order      Settle a filled order (oracle only)');
   console.log('');
 
   console.log('═'.repeat(60));
@@ -229,8 +229,8 @@ function showHelp() {
   console.log('  # Bridge: Fill order on EVM (Base Sepolia)');
   console.log('  pnpm dev bridge:fill-order --order-id 1');
   console.log('');
-  console.log('  # Stacks: Fill order on Stacks (reads order from Arbitrum)');
-  console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
+  console.log('  # Bridge: Fill order on Stacks (reads order from Arbitrum)');
+  console.log('  pnpm dev bridge:fill-stacks-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
   console.log('');
 
   console.log('⚙️  SETUP:');
