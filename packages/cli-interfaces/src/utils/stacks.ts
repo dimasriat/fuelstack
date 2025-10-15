@@ -1,7 +1,10 @@
-import { STACKS_TESTNET } from '@stacks/network';
+import { STACKS_TESTNET, STACKS_MAINNET } from '@stacks/network';
 import { generateWallet, getStxAddress } from '@stacks/wallet-sdk';
 
-// Stacks Testnet Configuration
+// Stacks Network Type
+export type StacksNetwork = 'mainnet' | 'testnet';
+
+// Stacks Testnet Configuration (default for backward compatibility)
 export const STACKS_NETWORK = STACKS_TESTNET;
 export const HIRO_API_BASE_URL = 'https://api.testnet.hiro.so';
 
@@ -9,24 +12,43 @@ export const HIRO_API_BASE_URL = 'https://api.testnet.hiro.so';
 export const MICRO_STX_PER_STX = BigInt(1_000_000);
 
 /**
+ * Get Hiro API URL based on network
+ */
+export function getHiroApiUrl(network: StacksNetwork = 'testnet'): string {
+  return network === 'mainnet'
+    ? 'https://api.hiro.so'
+    : 'https://api.testnet.hiro.so';
+}
+
+/**
  * Get Stacks address from mnemonic
  * Follows the same pattern as post-message.ts
+ * @param network - 'mainnet' or 'testnet' (defaults to 'testnet' for backward compatibility)
  */
-export async function getStacksAddress(mnemonic: string, password: string): Promise<string> {
+export async function getStacksAddress(
+  mnemonic: string,
+  password: string,
+  network: StacksNetwork = 'testnet'
+): Promise<string> {
   const wallet = await generateWallet({
     secretKey: mnemonic,
     password: password,
   });
   const account = wallet.accounts[0];
-  const testnetAddress = getStxAddress({ account, network: 'testnet' });
-  return testnetAddress;
+  const address = getStxAddress({ account, network });
+  return address;
 }
 
 /**
  * Fetch STX and token balances from Hiro API
+ * @param network - 'mainnet' or 'testnet' (defaults to 'testnet' for backward compatibility)
  */
-export async function fetchStacksBalances(address: string) {
-  const url = `${HIRO_API_BASE_URL}/extended/v1/address/${address}/balances`;
+export async function fetchStacksBalances(
+  address: string,
+  network: StacksNetwork = 'testnet'
+) {
+  const apiUrl = getHiroApiUrl(network);
+  const url = `${apiUrl}/extended/v1/address/${address}/balances`;
 
   try {
     const response = await fetch(url);
@@ -78,11 +100,23 @@ export function parseFungibleTokens(fungibleTokens: Record<string, any>): TokenB
   return Object.entries(fungibleTokens).map(([contractId, tokenData]) => {
     const balance = tokenData.balance || '0';
     const decimals = tokenData.decimals || 0;
-    const symbol = tokenData.symbol || 'UNKNOWN';
+
+    // Try to get symbol from API data first
+    let symbol = tokenData.symbol;
+
+    // If no symbol in API response, extract asset name from contract ID
+    // Contract ID format: {contractAddress}.{contractName}::{assetName}
+    if (!symbol) {
+      const assetNameMatch = contractId.match(/::(.+)$/);
+      symbol = assetNameMatch ? assetNameMatch[1] : 'UNKNOWN';
+    }
+
+    // Use symbol as name fallback if no name provided
+    const name = tokenData.name || symbol;
 
     return {
       contractId,
-      name: tokenData.name || contractId,
+      name,
       symbol,
       balance,
       decimals,

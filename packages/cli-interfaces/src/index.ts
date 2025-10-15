@@ -169,11 +169,11 @@ function showHelp() {
   console.log('  evm:check-balances   Check balances across all roles/chains');
   console.log('');
 
-  console.log('🔷 STACKS COMMANDS (Stacks Testnet)');
+  console.log('🔷 STACKS COMMANDS (Mainnet/Testnet)');
   console.log('─'.repeat(60));
   console.log('  stacks:mint-token    Mint SIP-10 fungible tokens');
   console.log('  stacks:transfer      Transfer STX or SIP-10 tokens');
-  console.log('  stacks:check-balance Check STX and token balances');
+  console.log('  stacks:check-balance Check STX and token balances (--mainnet for mainnet)');
   console.log('  stacks:list-wallets  List wallet addresses and keys from mnemonic');
   console.log('  stacks:get-messages  Get messages from contract (legacy)');
   console.log('  stacks:post-message  Post message to contract (legacy)');
@@ -207,6 +207,11 @@ function showHelp() {
   console.log('  # Stacks: List wallet addresses');
   console.log('  pnpm dev stacks:list-wallets --count 3');
   console.log('  pnpm dev stacks:list-wallets --hide-private  # Hide private keys');
+  console.log('');
+  console.log('  # Stacks: Check balance');
+  console.log('  pnpm dev stacks:check-balance  # Testnet (default)');
+  console.log('  pnpm dev stacks:check-balance --mainnet  # Mainnet');
+  console.log('  pnpm dev stacks:check-balance --address SP2... --mainnet  # Custom mainnet address');
   console.log('');
   console.log('  # Bridge: Check balances across all chains');
   console.log('  pnpm dev bridge:check-balances');

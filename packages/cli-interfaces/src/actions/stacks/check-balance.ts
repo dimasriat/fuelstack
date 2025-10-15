@@ -20,17 +20,22 @@ interface StacksBalanceData {
 }
 
 export async function checkStacksBalance() {
-  console.log('🔷 Stacks Balance Check');
-  console.log('🌐 Network: Stacks Testnet\n');
-
   // Parse command line arguments
   const args = parseArgs({
     args: process.argv.slice(3),
     options: {
       address: { type: 'string' },
+      mainnet: { type: 'boolean' },
       save: { type: 'string' }
     }
   });
+
+  // Determine network
+  const network = args.values.mainnet ? 'mainnet' : 'testnet';
+  const networkName = network === 'mainnet' ? 'Stacks Mainnet' : 'Stacks Testnet';
+
+  console.log('🔷 Stacks Balance Check');
+  console.log(`🌐 Network: ${networkName}\n`);
 
   // Get Stacks address from args or derive from mnemonic
   let address = args.values.address;
@@ -40,7 +45,7 @@ export async function checkStacksBalance() {
     if (WALLET_MNEMONIC_KEY && WALLET_PASSWORD) {
       console.log('📝 No address provided, deriving from configured mnemonic...\n');
       try {
-        address = await getStacksAddress(WALLET_MNEMONIC_KEY, WALLET_PASSWORD);
+        address = await getStacksAddress(WALLET_MNEMONIC_KEY, WALLET_PASSWORD, network);
       } catch (error) {
         console.error('❌ Error deriving address from mnemonic:', error);
         process.exit(1);
@@ -48,10 +53,12 @@ export async function checkStacksBalance() {
     } else {
       console.error('❌ Error: --address parameter is required or configure WALLET_MNEMONIC_KEY in .env');
       console.log('\nUsage:');
-      console.log('  pnpm dev check-stacks-balance --address <stacks-address>');
+      console.log('  pnpm dev stacks:check-balance --address <stacks-address>');
+      console.log('  pnpm dev stacks:check-balance --address <stacks-address> --mainnet');
       console.log('  OR configure WALLET_MNEMONIC_KEY and WALLET_PASSWORD in .env');
       console.log('\nExample:');
-      console.log('  pnpm dev check-stacks-balance --address ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM');
+      console.log('  pnpm dev stacks:check-balance --address ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM  # Testnet');
+      console.log('  pnpm dev stacks:check-balance --address SP2... --mainnet  # Mainnet');
       process.exit(1);
     }
   }
@@ -60,7 +67,7 @@ export async function checkStacksBalance() {
     console.log('🔍 Fetching Stacks balances...\n');
 
     // Fetch balances from Hiro API
-    const balances = await fetchStacksBalances(address);
+    const balances = await fetchStacksBalances(address, network);
 
     // Parse STX balance
     const stxBalance = formatMicroStx(balances.stx.balance);
@@ -99,8 +106,8 @@ export async function checkStacksBalance() {
     console.log('\n📍 Address:', address);
 
     // Display network info
-    console.log('🌐 Network: Stacks Testnet');
-    console.log('🔗 Explorer: https://explorer.hiro.so/address/' + address + '?chain=testnet');
+    console.log(`🌐 Network: ${networkName}`);
+    console.log(`🔗 Explorer: https://explorer.hiro.so/address/${address}?chain=${network}`);
 
     // Save to file if requested
     if (args.values.save) {
