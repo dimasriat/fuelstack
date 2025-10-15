@@ -12,9 +12,9 @@ import {
   SOURCE_CONTRACTS,
   DESTINATION_CONTRACTS,
   DEFAULT_RECIPIENT_ADDRESS,
-  STACKS_CONTRACTS,
-  WALLET_MNEMONIC_KEY,
-  WALLET_PASSWORD
+  DEFAULT_STACKS_SOLVER,
+  DEFAULT_STACKS_RECIPIENT,
+  STACKS_CONTRACTS
 } from '../../config';
 import { ERC20_ABI } from '../../abis';
 import { getAddress } from 'viem';
@@ -43,7 +43,10 @@ interface StacksBalances {
 interface BridgeBalancesOutput {
   timestamp: string;
   sender: EVMBalances;
-  solver: EVMBalances;
+  solver: {
+    evm: EVMBalances;
+    stacks?: StacksBalances;
+  };
   recipient: {
     evm: EVMBalances;
     stacks?: StacksBalances;
@@ -54,8 +57,11 @@ interface BridgeBalancesOutput {
       base: string;
     };
     solver: {
-      arbitrum: string;
-      base: string;
+      evm: {
+        arbitrum: string;
+        base: string;
+      };
+      stacks?: string;
     };
     recipient: {
       evm: {
@@ -76,6 +82,7 @@ export async function checkBalances() {
     args: process.argv.slice(3),
     options: {
       recipient: { type: 'string' },
+      'stacks-solver': { type: 'string' },
       'stacks-recipient': { type: 'string' },
       save: { type: 'string' }
     }
@@ -90,19 +97,13 @@ export async function checkBalances() {
     ? getAddress(args.values.recipient)
     : getAddress(DEFAULT_RECIPIENT_ADDRESS);
 
-  // Get Stacks recipient address
-  let stacksRecipientAddress = args.values['stacks-recipient'];
+  // Get Stacks addresses (use defaults or CLI overrides)
+  const stacksSolverAddress = args.values['stacks-solver'] || DEFAULT_STACKS_SOLVER;
+  const stacksRecipientAddress = args.values['stacks-recipient'] || DEFAULT_STACKS_RECIPIENT;
 
-  // If not provided, try to derive from mnemonic
-  if (!stacksRecipientAddress && WALLET_MNEMONIC_KEY && WALLET_PASSWORD) {
-    try {
-      console.log('📝 Deriving Stacks recipient from configured mnemonic...');
-      stacksRecipientAddress = await getStacksAddress(WALLET_MNEMONIC_KEY, WALLET_PASSWORD);
-      console.log(`✅ Stacks recipient: ${stacksRecipientAddress}\n`);
-    } catch (error) {
-      console.log('⚠️  Could not derive Stacks address from mnemonic. Skipping Stacks balances.\n');
-    }
-  }
+  console.log('📝 Stacks addresses:');
+  console.log(`   Solver: ${stacksSolverAddress}`);
+  console.log(`   Recipient: ${stacksRecipientAddress}\n`);
 
   // Create clients for EVM chains
   const arbitrumClient = createPublicClientForChain(SOURCE_CHAIN);
@@ -112,21 +113,25 @@ export async function checkBalances() {
     console.log('🔍 Fetching balances...\n');
 
     // Fetch all balances in parallel
-    const [senderBalances, solverBalances, recipientEvmBalances, recipientStacksBalances] = await Promise.all([
+    const [senderBalances, solverEvmBalances, solverStacksBalances, recipientEvmBalances, recipientStacksBalances] = await Promise.all([
       getEvmBalances(senderAccount.address, arbitrumClient, baseClient),
       getEvmBalances(solverAccount.address, arbitrumClient, baseClient),
+      getStacksBalances(stacksSolverAddress),
       getEvmBalances(evmRecipientAddress, arbitrumClient, baseClient),
-      stacksRecipientAddress ? getStacksBalances(stacksRecipientAddress) : null
+      getStacksBalances(stacksRecipientAddress)
     ]);
 
     // Build output structure
     const output: BridgeBalancesOutput = {
       timestamp: new Date().toISOString(),
       sender: senderBalances,
-      solver: solverBalances,
+      solver: {
+        evm: solverEvmBalances,
+        stacks: solverStacksBalances
+      },
       recipient: {
         evm: recipientEvmBalances,
-        ...(recipientStacksBalances && { stacks: recipientStacksBalances })
+        stacks: recipientStacksBalances
       },
       explorerLinks: {
         sender: {
@@ -134,17 +139,18 @@ export async function checkBalances() {
           base: `https://sepolia.basescan.org/address/${senderAccount.address}`
         },
         solver: {
-          arbitrum: `https://sepolia.arbiscan.io/address/${solverAccount.address}`,
-          base: `https://sepolia.basescan.org/address/${solverAccount.address}`
+          evm: {
+            arbitrum: `https://sepolia.arbiscan.io/address/${solverAccount.address}`,
+            base: `https://sepolia.basescan.org/address/${solverAccount.address}`
+          },
+          stacks: `https://explorer.hiro.so/address/${stacksSolverAddress}?chain=testnet`
         },
         recipient: {
           evm: {
             arbitrum: `https://sepolia.arbiscan.io/address/${evmRecipientAddress}`,
             base: `https://sepolia.basescan.org/address/${evmRecipientAddress}`
           },
-          ...(stacksRecipientAddress && {
-            stacks: `https://explorer.hiro.so/address/${stacksRecipientAddress}?chain=testnet`
-          })
+          stacks: `https://explorer.hiro.so/address/${stacksRecipientAddress}?chain=testnet`
         }
       }
     };
@@ -238,17 +244,18 @@ async function getStacksBalances(address: string): Promise<StacksBalances> {
   // Parse fungible tokens to find sBTC
   const tokens = parseFungibleTokens(balances.fungible_tokens || {});
 
-  // Find sBTC token balance
-  const sbtcContractId = `${STACKS_CONTRACTS.sbtc.address}.${STACKS_CONTRACTS.sbtc.name}`;
+  // Find sBTC token balance using full contract prefix
+  // Contract ID format: ST3P57DRBDE7ZRHEGEA3S64H0RFPSR8MV3PJGFSEX.mock-sbtc::sbtc
+  const sbtcContractPrefix = `${STACKS_CONTRACTS.sbtc.address}.${STACKS_CONTRACTS.sbtc.name}`;
   const sbtcToken = tokens.find(token =>
-    token.contractId.toLowerCase().includes(STACKS_CONTRACTS.sbtc.name.toLowerCase())
+    token.contractId.toLowerCase().startsWith(sbtcContractPrefix.toLowerCase())
   );
 
   return {
     address,
     testnet: {
       STX: stxBalance,
-      sBTC: sbtcToken ? sbtcToken.formatted : '0'
+      sBTC: sbtcToken ? sbtcToken.formatted : '0 sBTC'
     }
   };
 }
@@ -260,23 +267,26 @@ function displaySummary(output: BridgeBalancesOutput) {
   console.log('═'.repeat(60));
 
   console.log('\n👤 Sender:');
-  console.log(`   Address: ${output.sender.address}`);
+  console.log(`   EVM Address: ${output.sender.address}`);
   console.log(`   Arbitrum Sepolia: ${output.sender.arbitrumSepolia.ETH} ETH, ${output.sender.arbitrumSepolia.USDC} USDC`);
   console.log(`   Base Sepolia: ${output.sender.baseSepolia.ETH} ETH, ${output.sender.baseSepolia.sBTC} sBTC`);
 
   console.log('\n🔧 Solver:');
-  console.log(`   Address: ${output.solver.address}`);
-  console.log(`   Arbitrum Sepolia: ${output.solver.arbitrumSepolia.ETH} ETH, ${output.solver.arbitrumSepolia.USDC} USDC`);
-  console.log(`   Base Sepolia: ${output.solver.baseSepolia.ETH} ETH, ${output.solver.baseSepolia.sBTC} sBTC`);
+  console.log(`   EVM Address: ${output.solver.evm.address}`);
+  console.log(`   Arbitrum Sepolia: ${output.solver.evm.arbitrumSepolia.ETH} ETH, ${output.solver.evm.arbitrumSepolia.USDC} USDC`);
+  console.log(`   Base Sepolia: ${output.solver.evm.baseSepolia.ETH} ETH, ${output.solver.evm.baseSepolia.sBTC} sBTC`);
+  if (output.solver.stacks) {
+    console.log(`   Stacks Address: ${output.solver.stacks.address}`);
+    console.log(`   Stacks Testnet: ${output.solver.stacks.testnet.STX}, ${output.solver.stacks.testnet.sBTC}`);
+  }
 
   console.log('\n📦 Recipient:');
   console.log(`   EVM Address: ${output.recipient.evm.address}`);
   console.log(`   Arbitrum Sepolia: ${output.recipient.evm.arbitrumSepolia.ETH} ETH, ${output.recipient.evm.arbitrumSepolia.USDC} USDC`);
   console.log(`   Base Sepolia: ${output.recipient.evm.baseSepolia.ETH} ETH, ${output.recipient.evm.baseSepolia.sBTC} sBTC`);
-
   if (output.recipient.stacks) {
     console.log(`   Stacks Address: ${output.recipient.stacks.address}`);
-    console.log(`   Stacks Testnet: ${output.recipient.stacks.testnet.STX} STX, ${output.recipient.stacks.testnet.sBTC} sBTC`);
+    console.log(`   Stacks Testnet: ${output.recipient.stacks.testnet.STX}, ${output.recipient.stacks.testnet.sBTC}`);
   }
 
   console.log('\n💡 Expected Bridge Flow:');
@@ -288,8 +298,11 @@ function displaySummary(output: BridgeBalancesOutput) {
   console.log('\n🔗 Explorer Links:');
   console.log('   Sender (Arbitrum):', output.explorerLinks.sender.arbitrum);
   console.log('   Sender (Base):', output.explorerLinks.sender.base);
-  console.log('   Solver (Arbitrum):', output.explorerLinks.solver.arbitrum);
-  console.log('   Solver (Base):', output.explorerLinks.solver.base);
+  console.log('   Solver (Arbitrum):', output.explorerLinks.solver.evm.arbitrum);
+  console.log('   Solver (Base):', output.explorerLinks.solver.evm.base);
+  if (output.explorerLinks.solver.stacks) {
+    console.log('   Solver (Stacks):', output.explorerLinks.solver.stacks);
+  }
   console.log('   Recipient (Arbitrum):', output.explorerLinks.recipient.evm.arbitrum);
   console.log('   Recipient (Base):', output.explorerLinks.recipient.evm.base);
   if (output.explorerLinks.recipient.stacks) {

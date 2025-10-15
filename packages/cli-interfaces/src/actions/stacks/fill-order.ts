@@ -1,0 +1,305 @@
+import { parseArgs } from 'node:util';
+import { clientFromNetwork, STACKS_TESTNET } from '@stacks/network';
+import {
+  broadcastTransaction,
+  makeContractCall,
+  uintCV,
+  principalCV,
+  contractPrincipalCV,
+  stringAsciiCV,
+} from '@stacks/transactions';
+import { generateWallet, getStxAddress } from '@stacks/wallet-sdk';
+import {
+  WALLET_MNEMONIC_KEY,
+  WALLET_PASSWORD,
+  STACKS_CONTRACTS,
+  STACKS_BRIDGE_CONTRACTS,
+  SOURCE_CONTRACTS,
+} from '../../config';
+import {
+  fetchStacksBalances,
+  formatMicroStx,
+  waitForTransaction,
+  MICRO_STX_PER_STX,
+} from '../../utils/stacks';
+import { createPublicClientForChain, SOURCE_CHAIN } from '../../utils/evm';
+import { OPENGATE_ABI } from '../../abis';
+import { getAddress, toHex } from 'viem';
+
+const client = clientFromNetwork(STACKS_TESTNET);
+
+interface FillOrderStacksArgs {
+  orderId: string;
+  solverEvmAddress?: string;
+}
+
+const SBTC_DECIMALS = 8;
+
+export async function fillOrderStacks() {
+  console.log('💫 Filling cross-chain intent order on Stacks...');
+  console.log(`📍 Source: Arbitrum Sepolia → Destination: Stacks Testnet\n`);
+
+  // Parse command line arguments
+  const args = parseArgs({
+    args: process.argv.slice(3),
+    options: {
+      'order-id': { type: 'string' },
+      'solver-evm-address': { type: 'string' }
+    }
+  });
+
+  // Validate order ID
+  const orderIdStr = args.values['order-id'];
+  if (!orderIdStr || isNaN(parseInt(orderIdStr))) {
+    console.error('❌ Invalid order ID. Use --order-id <number>');
+    console.log('\nExample:');
+    console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x...');
+    process.exit(1);
+  }
+  const orderId = BigInt(orderIdStr);
+
+  // Validate wallet configuration
+  if (!WALLET_MNEMONIC_KEY || !WALLET_PASSWORD) {
+    console.error('❌ Wallet not configured. Set WALLET_MNEMONIC_KEY and WALLET_PASSWORD in .env');
+    process.exit(1);
+  }
+
+  try {
+    // Generate Stacks wallet
+    console.log('🔐 Generating Stacks wallet...');
+    const wallet = await generateWallet({
+      secretKey: WALLET_MNEMONIC_KEY,
+      password: WALLET_PASSWORD,
+    });
+    const account = wallet.accounts[0];
+    const senderKey = account.stxPrivateKey;
+    const senderAddress = getStxAddress({ account, network: 'testnet' });
+
+    // Get solver EVM address (for event logging)
+    const solverEvmAddress = args.values['solver-evm-address'] || '0x0000000000000000000000000000000000000000';
+    if (solverEvmAddress.length !== 42 || !solverEvmAddress.startsWith('0x')) {
+      console.error('❌ Invalid solver EVM address. Must be 42 characters starting with 0x');
+      process.exit(1);
+    }
+
+    // Read order from Arbitrum Sepolia OpenGate
+    console.log('🔍 Fetching order details from Arbitrum Sepolia...');
+    const sourcePublicClient = createPublicClientForChain(SOURCE_CHAIN);
+    const openGateAddress = getAddress(SOURCE_CONTRACTS.openGate);
+
+    const order = await sourcePublicClient.readContract({
+      address: openGateAddress,
+      abi: OPENGATE_ABI,
+      functionName: 'orders',
+      args: [orderId]
+    });
+
+    const [sender, tokenIn, amountIn, tokenOut, amountOut, recipient, fillDeadline, sourceChainId] = order;
+
+    // Check if order exists
+    if (sender === '0x0000000000000000000000000000000000000000') {
+      console.error('❌ Order does not exist');
+      process.exit(1);
+    }
+
+    // Check order status on source chain
+    const orderStatus = await sourcePublicClient.readContract({
+      address: openGateAddress,
+      abi: OPENGATE_ABI,
+      functionName: 'orderStatus',
+      args: [orderId]
+    });
+
+    const OPENED = toHex('OPENED', { size: 32 });
+    const SETTLED = toHex('SETTLED', { size: 32 });
+    const REFUNDED = toHex('REFUNDED', { size: 32 });
+
+    let statusName = 'UNKNOWN';
+    if (orderStatus === OPENED) statusName = 'OPENED';
+    else if (orderStatus === SETTLED) statusName = 'SETTLED';
+    else if (orderStatus === REFUNDED) statusName = 'REFUNDED';
+
+    console.log(`📊 Order status on source: ${statusName}`);
+
+    if (orderStatus !== OPENED) {
+      console.error(`❌ Order is not in OPENED status. Current status: ${statusName}`);
+      process.exit(1);
+    }
+
+    // Validate deadline (convert EVM timestamp to Stacks block height estimate)
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (currentTime > Number(fillDeadline)) {
+      console.error('❌ Order deadline has passed');
+      process.exit(1);
+    }
+
+    // Estimate Stacks block height deadline (6 second blocks)
+    const currentBlock = await fetch('https://api.testnet.hiro.so/v2/info')
+      .then(res => res.json())
+      .then(data => data.stacks_tip_height);
+
+    const timeUntilDeadline = Number(fillDeadline) - currentTime;
+    const blocksUntilDeadline = Math.floor(timeUntilDeadline / 6);
+    const fillDeadlineBlocks = currentBlock + blocksUntilDeadline;
+
+    const isNativeToken = tokenOut === '0x0000000000000000000000000000000000000000';
+    const tokenSymbol = isNativeToken ? 'STX' : 'sBTC';
+    const tokenDecimals = isNativeToken ? 6 : SBTC_DECIMALS;
+
+    console.log('\n📋 Order Details:');
+    console.log(`  Order ID: ${orderId}`);
+    console.log(`  Sender: ${sender}`);
+    console.log(`  Token Out: ${tokenSymbol} (Stacks)`);
+    console.log(`  Amount Out: ${Number(amountOut) / Math.pow(10, tokenDecimals)} ${tokenSymbol}`);
+    console.log(`  Recipient: ${recipient}`);
+    console.log(`  Fill Deadline (EVM): ${new Date(Number(fillDeadline) * 1000).toLocaleString()}`);
+    console.log(`  Fill Deadline (Stacks): ~${fillDeadlineBlocks} blocks`);
+    console.log(`  Source Chain ID: ${sourceChainId}`);
+    console.log(`  Solver Stacks: ${senderAddress}`);
+    console.log(`  Solver EVM: ${solverEvmAddress}`);
+    console.log('');
+
+    // Check if order already filled on Stacks
+    console.log('🔍 Checking if order already filled on Stacks...');
+    // Note: We can't easily query Stacks contract state without a read-only function
+    // For now, we'll proceed and let the contract reject if already filled
+    console.log('⚠️  Note: Cannot check fill status before transaction. Contract will reject if already filled.');
+
+    // Check Stacks balance
+    console.log('💰 Checking Stacks balance...');
+    const balances = await fetchStacksBalances(senderAddress, 'testnet');
+    const stxBalance = BigInt(balances.stx.balance);
+
+    if (isNativeToken) {
+      // Need STX for payment + fees
+      const requiredStx = amountOut + BigInt(500000); // amount + 0.5 STX for fees
+      if (stxBalance < requiredStx) {
+        console.error('\\n❌ Insufficient STX balance');
+        console.error(`   Current: ${formatMicroStx(stxBalance)}`);
+        console.error(`   Required: ${formatMicroStx(requiredStx.toString())} (${formatMicroStx(amountOut.toString())} + fees)`);
+        console.error('\\n💡 Get testnet STX from: https://explorer.hiro.so/sandbox/faucet?chain=testnet');
+        process.exit(1);
+      }
+      console.log(`✅ STX balance: ${formatMicroStx(stxBalance)}`);
+    } else {
+      // Need sBTC for payment + STX for fees
+      if (stxBalance < BigInt(500000)) {
+        console.error('\\n❌ Insufficient STX balance for transaction fees');
+        console.error(`   Current: ${formatMicroStx(stxBalance)}`);
+        console.error(`   Required: At least 0.5 STX for fees`);
+        console.error('\\n💡 Get testnet STX from: https://explorer.hiro.so/sandbox/faucet?chain=testnet');
+        process.exit(1);
+      }
+
+      // Check sBTC balance
+      const sbtcToken = balances.fungible_tokens?.[`${STACKS_CONTRACTS.sbtc.address}.${STACKS_CONTRACTS.sbtc.name}::${STACKS_CONTRACTS.sbtc.name}`];
+      const sbtcBalance = sbtcToken ? BigInt(sbtcToken.balance) : BigInt(0);
+
+      if (sbtcBalance < amountOut) {
+        console.error('\\n❌ Insufficient sBTC balance');
+        console.error(`   Current: ${Number(sbtcBalance) / Math.pow(10, SBTC_DECIMALS)} sBTC`);
+        console.error(`   Required: ${Number(amountOut) / Math.pow(10, SBTC_DECIMALS)} sBTC`);
+        process.exit(1);
+      }
+      console.log(`✅ sBTC balance: ${Number(sbtcBalance) / Math.pow(10, SBTC_DECIMALS)} sBTC`);
+    }
+
+    // Note: For SIP-10 tokens on Stacks, the transfer happens atomically in the fill-token function
+    // No separate approve is needed like on EVM - the sender must have the tokens and the contract
+    // will call transfer directly
+
+    // Create and broadcast fill transaction
+    console.log('\\n🚀 Creating fill transaction on Stacks...');
+    let tx;
+
+    if (isNativeToken) {
+      // Fill with native STX
+      tx = await makeContractCall({
+        client,
+        contractAddress: STACKS_BRIDGE_CONTRACTS.fillGate.address,
+        contractName: STACKS_BRIDGE_CONTRACTS.fillGate.name,
+        functionName: 'fill-native',
+        functionArgs: [
+          uintCV(Number(orderId)),
+          uintCV(Number(amountOut)),
+          principalCV(recipient),
+          stringAsciiCV(solverEvmAddress),
+          uintCV(fillDeadlineBlocks),
+          uintCV(Number(sourceChainId))
+        ],
+        senderKey: senderKey,
+      });
+    } else {
+      // Fill with SIP-10 token (sBTC)
+      tx = await makeContractCall({
+        client,
+        contractAddress: STACKS_BRIDGE_CONTRACTS.fillGate.address,
+        contractName: STACKS_BRIDGE_CONTRACTS.fillGate.name,
+        functionName: 'fill-token',
+        functionArgs: [
+          uintCV(Number(orderId)),
+          contractPrincipalCV(STACKS_CONTRACTS.sbtc.address, STACKS_CONTRACTS.sbtc.name),
+          uintCV(Number(amountOut)),
+          principalCV(recipient),
+          stringAsciiCV(solverEvmAddress),
+          uintCV(fillDeadlineBlocks),
+          uintCV(Number(sourceChainId))
+        ],
+        senderKey: senderKey,
+      });
+    }
+
+    console.log('📡 Broadcasting transaction...');
+    const result = await broadcastTransaction({
+      transaction: tx,
+    });
+
+    // Check if broadcast failed
+    if ('error' in result) {
+      console.error('\\n❌ Transaction broadcast failed!');
+      console.error(`   Reason: ${result.error}`);
+      console.error('\\n💡 Common causes:');
+      console.error('   - Order already filled on Stacks');
+      console.error('   - Deadline exceeded');
+      console.error('   - Insufficient balance');
+      console.error('   - Network connectivity issues');
+      process.exit(1);
+    }
+
+    console.log(`\\n📡 Transaction broadcast successful!`);
+    console.log(`🔗 Transaction ID: ${result.txid}`);
+    console.log(`🌐 Explorer: https://explorer.hiro.so/txid/${result.txid}?chain=testnet`);
+
+    // Wait for confirmation
+    console.log('\\n⏳ Waiting for confirmation (this may take 1-2 minutes)...');
+    const confirmation = await waitForTransaction(result.txid, 'testnet');
+
+    if (confirmation.success) {
+      console.log('\\n✅ Order filled successfully on Stacks!');
+      console.log(`📊 Result: ${confirmation.result?.repr || '(ok true)'}`);
+      console.log(`\\n💡 Next: Oracle will settle the order on Arbitrum with "pnpm dev bridge:settle-order --order-id ${orderId} --solver-address ${solverEvmAddress}"`);
+    } else {
+      console.error('\\n❌ Transaction failed on-chain!');
+      console.error(`   Status: ${confirmation.status}`);
+      if (confirmation.errorMessage) {
+        console.error(`   Error: ${confirmation.errorMessage}`);
+      }
+      if (confirmation.result?.repr) {
+        console.error(`   Contract response: ${confirmation.result.repr}`);
+      }
+      console.error('\\n💡 Common causes:');
+      console.error('   - Order already filled (u100)');
+      console.error('   - Deadline exceeded (u101)');
+      console.error('   - Insufficient balance');
+      console.error('\\n🔗 Check the explorer for more details');
+      process.exit(1);
+    }
+
+  } catch (error) {
+    console.error('\\n❌ Error filling order:', error);
+    if (error instanceof Error) {
+      console.error(`   ${error.message}`);
+    }
+    process.exit(1);
+  }
+}

@@ -9,6 +9,7 @@ import {
   mintStacksToken,
   transferStacksToken,
   listStacksWallets,
+  fillOrderStacks,
   // Bridge actions
   bridgeCheckBalances,
   openOrder,
@@ -76,6 +77,9 @@ async function handleStacksCommand(action: string) {
       break;
     case 'list-wallets':
       await listStacksWallets();
+      break;
+    case 'fill-order':
+      await fillOrderStacks();
       break;
     case 'get-messages':
       await getMessages();
@@ -175,6 +179,7 @@ function showHelp() {
   console.log('  stacks:transfer      Transfer STX or SIP-10 tokens');
   console.log('  stacks:check-balance Check STX and token balances (--mainnet for mainnet)');
   console.log('  stacks:list-wallets  List wallet addresses and keys from mnemonic');
+  console.log('  stacks:fill-order    Fill cross-chain order on Stacks (reads from Arbitrum)');
   console.log('  stacks:get-messages  Get messages from contract (legacy)');
   console.log('  stacks:post-message  Post message to contract (legacy)');
   console.log('');
@@ -215,14 +220,17 @@ function showHelp() {
   console.log('');
   console.log('  # Bridge: Check balances across all chains');
   console.log('  pnpm dev bridge:check-balances');
-  console.log('  pnpm dev bridge:check-balances --stacks-recipient ST2...  # Custom Stacks recipient');
+  console.log('  pnpm dev bridge:check-balances --stacks-solver ST1... --stacks-recipient ST2...  # Custom Stacks addresses');
   console.log('  pnpm dev bridge:check-balances --save balances.json  # Save to file');
   console.log('');
   console.log('  # Bridge: Open cross-chain order');
   console.log('  pnpm dev bridge:open-order --amount-in 100 --amount-out 0.001 --token-out sbtc');
   console.log('');
-  console.log('  # Bridge: Fill order');
+  console.log('  # Bridge: Fill order on EVM (Base Sepolia)');
   console.log('  pnpm dev bridge:fill-order --order-id 1');
+  console.log('');
+  console.log('  # Stacks: Fill order on Stacks (reads order from Arbitrum)');
+  console.log('  pnpm dev stacks:fill-order --order-id 1 --solver-evm-address 0x...');
   console.log('');
 
   console.log('⚙️  SETUP:');
