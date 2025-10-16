@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { parseUnits, formatUnits, decodeEventLog } from 'viem';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, RefreshCw, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -15,8 +16,10 @@ import {
   getTokenAddress,
   getOpenGateAddress,
   getTxExplorerUrl,
+  getStacksTxExplorerUrl,
 } from '../lib/contracts';
 import { OrderStorage } from '../lib/orderStorage';
+import { OrderTracker } from '../lib/orderTracker';
 
 const TOKENS = [
   { symbol: 'USDC', name: 'USD Coin', address: '0xFe1EF6950833f6C148DB87e0131aB44B16F9C91F' },
@@ -46,6 +49,9 @@ export const Bridge = () => {
   const [bridgeTxHash, setBridgeTxHash] = useState<`0x${string}` | null>(null);
   const [orderId, setOrderId] = useState<bigint | null>(null);
   const [isApproved, setIsApproved] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<'OPENED' | 'FILLED' | null>(null);
+  const [fillTxId, setFillTxId] = useState<string | null>(null);
+  const [isPollingStatus, setIsPollingStatus] = useState(false);
 
   // Get addresses
   const tokenAddress = getTokenAddress(selectedChain.id, selectedToken.symbol as 'USDC' | 'WBTC');
@@ -157,6 +163,42 @@ export const Bridge = () => {
     setIsApproved(false);
   }, [amount, selectedToken.symbol]);
 
+  // Poll order status after order is created
+  useEffect(() => {
+    if (!orderId) return;
+
+    const checkStatus = async () => {
+      try {
+        setIsPollingStatus(true);
+        const result = await OrderTracker.checkOrderStatus(orderId.toString());
+
+        setOrderStatus(result.status);
+
+        if (result.status === 'FILLED' && result.fillTxId) {
+          setFillTxId(result.fillTxId);
+          setMessage('Order filled successfully!');
+          // Update order in storage
+          OrderStorage.updateOrderStatus(orderId.toString(), 'FILLED', result.fillTxId);
+        } else {
+          setMessage('Order opened! Waiting for keeper to fill...');
+        }
+      } catch (error) {
+        console.error('Error checking order status:', error);
+      } finally {
+        setIsPollingStatus(false);
+      }
+    };
+
+    // Initial check
+    checkStatus();
+
+    // Set up polling interval (10 seconds)
+    const interval = setInterval(checkStatus, 10000);
+
+    // Cleanup on unmount or when order changes
+    return () => clearInterval(interval);
+  }, [orderId]);
+
   const handleApprove = async () => {
     if (!address || !decimals || !openGateAddress) return;
 
@@ -184,6 +226,9 @@ export const Bridge = () => {
     setIsApproved(false);
     setBridgeTxHash(null);
     setOrderId(null);
+    setOrderStatus(null);
+    setFillTxId(null);
+    setIsPollingStatus(false);
 
     try {
       const amountIn = parseUnits(amount, decimals);
@@ -237,7 +282,7 @@ export const Bridge = () => {
               selected={selectedChain}
               onSelect={setSelectedChain}
             />
-            <div className="glass rounded-2xl p-6 space-y-4">
+            <div className="glass rounded-2xl p-6 space-y-4 overflow-visible">
               <div className="flex items-center gap-4">
                 <TokenSelector
                   tokens={TOKENS}
@@ -368,22 +413,42 @@ export const Bridge = () => {
 
         {/* Status Message */}
         {message && (
-          <div className="text-center">
+          <div className="text-center space-y-3">
             <div className={`inline-block px-6 py-3 rounded-xl font-medium ${
-              message.includes('successfully') || message.includes('approved')
+              message.includes('filled successfully')
+                ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/30'
+                : message.includes('approved')
                 ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/30'
                 : message.includes('Error')
                 ? 'bg-red-500/20 text-red-400 ring-1 ring-red-500/30'
+                : message.includes('Waiting for keeper')
+                ? 'bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/30'
                 : 'bg-primary-500/20 text-primary-400 ring-1 ring-primary-500/30'
             }`}>
               {message}
             </div>
+
+            {/* Order Status with Polling Indicator */}
+            {orderId && orderStatus && (
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${
+                  orderStatus === 'FILLED'
+                    ? 'bg-green-500/20 text-green-400 ring-1 ring-green-500/30'
+                    : 'bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/30'
+                }`}>
+                  {orderStatus === 'OPENED' && isPollingStatus && (
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                  )}
+                  Order #{orderId.toString()} - {orderStatus}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
         {/* Transaction Links */}
         {(approveTxHash || bridgeTxHash) && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {approveTxHash && (
               <div className="text-center text-sm">
                 <a
@@ -392,10 +457,8 @@ export const Bridge = () => {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-zinc-400 hover:text-primary-500 transition-colors"
                 >
+                  <ExternalLink className="w-4 h-4" />
                   View Approval Transaction
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
                 </a>
               </div>
             )}
@@ -407,18 +470,32 @@ export const Bridge = () => {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-primary-500 hover:text-primary-400 transition-colors"
                 >
-                  View Bridge Transaction
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
+                  <ExternalLink className="w-4 h-4" />
+                  View EVM Transaction
                 </a>
               </div>
             )}
-            {orderId !== null && (
-              <div className="text-center">
-                <div className="inline-block px-6 py-3 rounded-xl font-medium bg-primary-500/20 text-primary-400 ring-1 ring-primary-500/30">
-                  Order ID: #{orderId.toString()}
-                </div>
+            {fillTxId && (
+              <div className="text-center text-sm">
+                <a
+                  href={getStacksTxExplorerUrl(fillTxId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-green-500 hover:text-green-400 transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View Stacks Fill Transaction
+                </a>
+              </div>
+            )}
+            {orderId && (
+              <div className="text-center text-sm">
+                <Link
+                  to="/explorer"
+                  className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors"
+                >
+                  View all orders on Explorer →
+                </Link>
               </div>
             )}
           </div>
