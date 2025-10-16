@@ -35,7 +35,7 @@ export class OpenGateListener {
           const amountIn = log.args.amountIn as bigint;
           const tokenOut = log.args.tokenOut as Address;
           const amountOut = log.args.amountOut as bigint;
-          const recipient = log.args.recipient as Address;
+          const recipient = log.args.recipient as string;
           const fillDeadline = log.args.fillDeadline as bigint;
           const sourceChainId = log.args.sourceChainId as bigint;
 

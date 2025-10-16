@@ -17,7 +17,7 @@ const USDC_DECIMALS = 6;
 
 export async function openOrder() {
   console.log('🌉 Opening new cross-chain intent order...');
-  console.log(`📍 Source: Arbitrum Sepolia → Destination: Base Sepolia\n`);
+  console.log(`📍 Source: Arbitrum Sepolia → Destination: Stacks Testnet\n`);
 
   // Parse command line arguments
   const args = parseArgs({
@@ -60,27 +60,39 @@ export async function openOrder() {
   const openGateAddress = getAddress(SOURCE_CONTRACTS.openGate);
   const usdcAddress = getAddress(SOURCE_CONTRACTS.usdc);
 
-  // Get recipient (default to DEFAULT_RECIPIENT_ADDRESS)
-  const recipient = args.values.recipient 
-    ? getAddress(args.values.recipient)
-    : getAddress(DEFAULT_RECIPIENT_ADDRESS);
+  // Get recipient (must be a Stacks address)
+  const recipient = args.values.recipient;
+  if (!recipient) {
+    console.error('❌ Recipient Stacks address required. Use --recipient <stacks-address>');
+    console.error('   Example: --recipient ST1E5EJ7WPTJA1PBP81FMZK4J43NBWC7E80F8W9P5');
+    process.exit(1);
+  }
+
+  // Validate Stacks address format
+  if (!recipient.startsWith('S')) {
+    console.error('❌ Invalid Stacks address. Must start with "S" for testnet/mainnet');
+    console.error('   Example: ST1E5EJ7WPTJA1PBP81FMZK4J43NBWC7E80F8W9P5');
+    process.exit(1);
+  }
 
   // Calculate deadline
   const deadlineHours = args.values.deadline ? parseInt(args.values.deadline) : DEFAULT_DEADLINE_HOURS;
   const fillDeadline = getCurrentTimestamp() + (deadlineHours * 3600);
 
   // Parse amounts
+  // Note: We store amounts in EVM format (18 decimals for native)
+  // The solver will convert to Stacks format (6 decimals for STX) when filling
   const amountInBigInt = parseTokenAmount(amountIn, USDC_DECIMALS);
-  const amountOutBigInt = tokenOut === 'native' 
-    ? parseTokenAmount(amountOut, 18) // ETH has 18 decimals
-    : parseTokenAmount(amountOut, 8);  // sBTC has 8 decimals
+  const amountOutBigInt = tokenOut === 'native'
+    ? parseTokenAmount(amountOut, 18) // Store as 18 decimals (EVM format), solver converts to 6 for Stacks
+    : parseTokenAmount(amountOut, 8);  // sBTC has 8 decimals on both chains
 
   console.log('📋 Order Details:');
   console.log(`  Token In: USDC (Arbitrum Sepolia)`);
   console.log(`  Amount In: ${amountIn} USDC`);
-  console.log(`  Token Out: ${tokenOut === 'native' ? 'ETH (Base Sepolia)' : 'sBTC (Base Sepolia)'}`);
-  console.log(`  Amount Out: ${amountOut} ${tokenOut === 'native' ? 'ETH' : 'sBTC'}`);
-  console.log(`  Recipient: ${recipient}`);
+  console.log(`  Token Out: ${tokenOut === 'native' ? 'STX (Stacks Testnet)' : 'sBTC (Stacks Testnet)'}`);
+  console.log(`  Amount Out: ${amountOut} ${tokenOut === 'native' ? 'STX' : 'sBTC'}`);
+  console.log(`  Recipient (Stacks): ${recipient}`);
   console.log(`  Deadline: ${new Date(fillDeadline * 1000).toLocaleString()}`);
   console.log('');
 
@@ -138,12 +150,12 @@ export async function openOrder() {
       functionName: 'open',
       args: [
         usdcAddress,                    // tokenIn
-        amountInBigInt,                 // amountIn  
+        amountInBigInt,                 // amountIn
         tokenOut === 'native' ? '0x0000000000000000000000000000000000000000' : DESTINATION_CONTRACTS.sbtc as Address, // tokenOut
         amountOutBigInt,                // amountOut
-        recipient,                      // recipient
-        BigInt(fillDeadline),           // fillDeadline
-        BigInt(CHAIN_IDS.arbitrumSepolia) // sourceChainId
+        recipient,                      // recipient (Stacks address)
+        BigInt(fillDeadline)            // fillDeadline
+        // sourceChainId is auto-set to block.chainid in OpenGateV2
       ]
     });
 
@@ -182,7 +194,7 @@ export async function openOrder() {
       console.log('\n🎯 **ORDER CREATED SUCCESSFULLY**');
       console.log(`📋 Order ID: #${orderId}`);
       console.log(`🔗 Transaction: ${getTxExplorerUrl(SOURCE_CHAIN, openTx)}`);
-      console.log(`\n💡 Next: Use "pnpm dev fill-order --order-id ${orderId}" to fill this order`);
+      console.log(`\n💡 Next: Use "pnpm dev bridge:fill-stacks-order --order-id ${orderId} --solver-evm-address 0x..." to fill this order`);
       console.log(`📊 Or watch the keeper/solver automatically fill Order #${orderId}`);
     } else {
       console.log('\n✅ Order opened successfully!');

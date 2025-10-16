@@ -9,10 +9,9 @@ import {
   mintStacksToken,
   transferStacksToken,
   listStacksWallets,
-  // Bridge actions
+  // Bridge actions (EVM → Stacks only)
   bridgeCheckBalances,
   openOrder,
-  fillOrder,
   fillStacksOrder,
   settleOrder
 } from './actions';
@@ -99,9 +98,6 @@ async function handleBridgeCommand(action: string) {
     case 'open-order':
       await openOrder();
       break;
-    case 'fill-order':
-      await fillOrder();
-      break;
     case 'fill-stacks-order':
       await fillStacksOrder();
       break;
@@ -147,10 +143,6 @@ async function handleLegacyCommand(command: string) {
       console.warn('⚠️  Legacy command. Use "bridge:open-order" instead.');
       await openOrder();
       break;
-    case 'fill-order':
-      console.warn('⚠️  Legacy command. Use "bridge:fill-order" instead.');
-      await fillOrder();
-      break;
     case 'settle-order':
       console.warn('⚠️  Legacy command. Use "bridge:settle-order" instead.');
       await settleOrder();
@@ -183,11 +175,10 @@ function showHelp() {
   console.log('  stacks:post-message  Post message to contract (legacy)');
   console.log('');
 
-  console.log('🌉 BRIDGE COMMANDS (Cross-chain Intent Bridge)');
+  console.log('🌉 BRIDGE COMMANDS (EVM → Stacks Intent Bridge)');
   console.log('─'.repeat(60));
   console.log('  bridge:check-balances    Check balances across EVM and Stacks chains');
-  console.log('  bridge:open-order        Open a new cross-chain intent order');
-  console.log('  bridge:fill-order        Fill an order on EVM (Base Sepolia)');
+  console.log('  bridge:open-order        Open a new cross-chain intent order (EVM → Stacks)');
   console.log('  bridge:fill-stacks-order Fill an order on Stacks (reads from Arbitrum)');
   console.log('  bridge:settle-order      Settle a filled order (oracle only)');
   console.log('');
@@ -223,14 +214,11 @@ function showHelp() {
   console.log('  pnpm dev bridge:check-balances --stacks-solver ST1... --stacks-recipient ST2...  # Custom Stacks addresses');
   console.log('  pnpm dev bridge:check-balances --save balances.json  # Save to file');
   console.log('');
-  console.log('  # Bridge: Open cross-chain order');
-  console.log('  pnpm dev bridge:open-order --amount-in 100 --amount-out 0.001 --token-out sbtc');
-  console.log('');
-  console.log('  # Bridge: Fill order on EVM (Base Sepolia)');
-  console.log('  pnpm dev bridge:fill-order --order-id 1');
+  console.log('  # Bridge: Open cross-chain order (EVM → Stacks)');
+  console.log('  pnpm dev bridge:open-order --amount-in 100 --amount-out 0.003 --token-out native --recipient ST1E5EJ7...');
   console.log('');
   console.log('  # Bridge: Fill order on Stacks (reads order from Arbitrum)');
-  console.log('  pnpm dev bridge:fill-stacks-order --order-id 1 --solver-evm-address 0x... --recipient ST2...');
+  console.log('  pnpm dev bridge:fill-stacks-order --order-id 1 --solver-evm-address 0x...');
   console.log('');
 
   console.log('⚙️  SETUP:');

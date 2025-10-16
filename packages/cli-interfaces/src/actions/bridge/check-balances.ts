@@ -25,6 +25,7 @@ interface EVMBalances {
   arbitrumSepolia: {
     ETH: string;
     USDC: string;
+    WBTC: string;
   };
   baseSepolia: {
     ETH: string;
@@ -184,10 +185,8 @@ async function getEvmBalances(
   baseClient: any
 ): Promise<EVMBalances> {
   // Get native ETH balances
-  const [arbitrumETH, baseETH] = await Promise.all([
-    arbitrumClient.getBalance({ address: getAddress(address) }),
-    baseClient.getBalance({ address: getAddress(address) })
-  ]);
+  const arbitrumETH = await arbitrumClient.getBalance({ address: getAddress(address) });
+  // const baseETH = await baseClient.getBalance({ address: getAddress(address) });
 
   // Get USDC balance on Arbitrum Sepolia
   const usdcAddress = getAddress(SOURCE_CONTRACTS.usdc);
@@ -205,31 +204,48 @@ async function getEvmBalances(
     })
   ]);
 
-  // Get sBTC balance on Base Sepolia
-  const sbtcAddress = getAddress(DESTINATION_CONTRACTS.sbtc);
-  const [sbtcBalance, sbtcDecimals] = await Promise.all([
-    baseClient.readContract({
-      address: sbtcAddress,
+  // Get WBTC balance on Arbitrum Sepolia
+  const wbtcAddress = getAddress(SOURCE_CONTRACTS.wbtc);
+  const [wbtcBalance, wbtcDecimals] = await Promise.all([
+    arbitrumClient.readContract({
+      address: wbtcAddress,
       abi: ERC20_ABI,
       functionName: 'balanceOf',
       args: [getAddress(address)]
     }),
-    baseClient.readContract({
-      address: sbtcAddress,
+    arbitrumClient.readContract({
+      address: wbtcAddress,
       abi: ERC20_ABI,
       functionName: 'decimals'
     })
   ]);
 
+  // Get sBTC balance on Base Sepolia
+  // const sbtcAddress = getAddress(DESTINATION_CONTRACTS.sbtc);
+  // const [sbtcBalance, sbtcDecimals] = await Promise.all([
+  //   baseClient.readContract({
+  //     address: sbtcAddress,
+  //     abi: ERC20_ABI,
+  //     functionName: 'balanceOf',
+  //     args: [getAddress(address)]
+  //   }),
+  //   baseClient.readContract({
+  //     address: sbtcAddress,
+  //     abi: ERC20_ABI,
+  //     functionName: 'decimals'
+  //   })
+  // ]);
+
   return {
     address,
     arbitrumSepolia: {
       ETH: formatTokenAmount(arbitrumETH, 18, ''),
-      USDC: formatTokenAmount(usdcBalance, usdcDecimals, '')
+      USDC: formatTokenAmount(usdcBalance, usdcDecimals, ''),
+      WBTC: formatTokenAmount(wbtcBalance, wbtcDecimals, '')
     },
     baseSepolia: {
-      ETH: formatTokenAmount(baseETH, 18, ''),
-      sBTC: formatTokenAmount(sbtcBalance, sbtcDecimals, '')
+      ETH: '0 ',
+      sBTC: '0 '
     }
   };
 }
@@ -268,13 +284,13 @@ function displaySummary(output: BridgeBalancesOutput) {
 
   console.log('\n👤 Sender:');
   console.log(`   EVM Address: ${output.sender.address}`);
-  console.log(`   Arbitrum Sepolia: ${output.sender.arbitrumSepolia.ETH} ETH, ${output.sender.arbitrumSepolia.USDC} USDC`);
-  console.log(`   Base Sepolia: ${output.sender.baseSepolia.ETH} ETH, ${output.sender.baseSepolia.sBTC} sBTC`);
+  console.log(`   Arbitrum Sepolia: ${output.sender.arbitrumSepolia.ETH} ETH, ${output.sender.arbitrumSepolia.USDC} USDC, ${output.sender.arbitrumSepolia.WBTC} WBTC`);
+  // console.log(`   Base Sepolia: ${output.sender.baseSepolia.ETH} ETH, ${output.sender.baseSepolia.sBTC} sBTC`);
 
   console.log('\n🔧 Solver:');
   console.log(`   EVM Address: ${output.solver.evm.address}`);
-  console.log(`   Arbitrum Sepolia: ${output.solver.evm.arbitrumSepolia.ETH} ETH, ${output.solver.evm.arbitrumSepolia.USDC} USDC`);
-  console.log(`   Base Sepolia: ${output.solver.evm.baseSepolia.ETH} ETH, ${output.solver.evm.baseSepolia.sBTC} sBTC`);
+  console.log(`   Arbitrum Sepolia: ${output.solver.evm.arbitrumSepolia.ETH} ETH, ${output.solver.evm.arbitrumSepolia.USDC} USDC, ${output.solver.evm.arbitrumSepolia.WBTC} WBTC`);
+  // console.log(`   Base Sepolia: ${output.solver.evm.baseSepolia.ETH} ETH, ${output.solver.evm.baseSepolia.sBTC} sBTC`);
   if (output.solver.stacks) {
     console.log(`   Stacks Address: ${output.solver.stacks.address}`);
     console.log(`   Stacks Testnet: ${output.solver.stacks.testnet.STX}, ${output.solver.stacks.testnet.sBTC}`);
@@ -282,30 +298,16 @@ function displaySummary(output: BridgeBalancesOutput) {
 
   console.log('\n📦 Recipient:');
   console.log(`   EVM Address: ${output.recipient.evm.address}`);
-  console.log(`   Arbitrum Sepolia: ${output.recipient.evm.arbitrumSepolia.ETH} ETH, ${output.recipient.evm.arbitrumSepolia.USDC} USDC`);
-  console.log(`   Base Sepolia: ${output.recipient.evm.baseSepolia.ETH} ETH, ${output.recipient.evm.baseSepolia.sBTC} sBTC`);
+  console.log(`   Arbitrum Sepolia: ${output.recipient.evm.arbitrumSepolia.ETH} ETH, ${output.recipient.evm.arbitrumSepolia.USDC} USDC, ${output.recipient.evm.arbitrumSepolia.WBTC} WBTC`);
+  // console.log(`   Base Sepolia: ${output.recipient.evm.baseSepolia.ETH} ETH, ${output.recipient.evm.baseSepolia.sBTC} sBTC`);
   if (output.recipient.stacks) {
     console.log(`   Stacks Address: ${output.recipient.stacks.address}`);
     console.log(`   Stacks Testnet: ${output.recipient.stacks.testnet.STX}, ${output.recipient.stacks.testnet.sBTC}`);
   }
 
   console.log('\n💡 Expected Bridge Flow:');
-  console.log('   1. 👤 Sender: USDC ↓ on Arbitrum (locked in OpenGate)');
-  console.log('   2. 📦 Recipient: ETH/sBTC ↑ on Base or STX/sBTC ↑ on Stacks');
-  console.log('   3. 🔧 Solver: USDC ↑ on Arbitrum (after settlement)');
-  console.log('                ETH/sBTC ↓ on Base or STX/sBTC ↓ on Stacks');
-
-  console.log('\n🔗 Explorer Links:');
-  console.log('   Sender (Arbitrum):', output.explorerLinks.sender.arbitrum);
-  console.log('   Sender (Base):', output.explorerLinks.sender.base);
-  console.log('   Solver (Arbitrum):', output.explorerLinks.solver.evm.arbitrum);
-  console.log('   Solver (Base):', output.explorerLinks.solver.evm.base);
-  if (output.explorerLinks.solver.stacks) {
-    console.log('   Solver (Stacks):', output.explorerLinks.solver.stacks);
-  }
-  console.log('   Recipient (Arbitrum):', output.explorerLinks.recipient.evm.arbitrum);
-  console.log('   Recipient (Base):', output.explorerLinks.recipient.evm.base);
-  if (output.explorerLinks.recipient.stacks) {
-    console.log('   Recipient (Stacks):', output.explorerLinks.recipient.stacks);
-  }
+  console.log('   1. 👤 Sender: USDC/WBTC ↓ on Arbitrum (locked in OpenGate)');
+  console.log('   2. 📦 Recipient: STX/sBTC ↑ on Stacks');
+  console.log('   3. 🔧 Solver: USDC/WBTC ↑ on Arbitrum (after settlement)');
+  console.log('                STX/sBTC ↓ on Stacks');
 }

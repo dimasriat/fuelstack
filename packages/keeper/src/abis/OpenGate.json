@@ -6,11 +6,6 @@
         "name": "_trustedOracle",
         "type": "address",
         "internalType": "address"
-      },
-      {
-        "name": "_chainRegistry",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
@@ -82,19 +77,6 @@
   },
   {
     "type": "function",
-    "name": "chainRegistry",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract ChainRegistry"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "getOrder",
     "inputs": [
       {
@@ -107,7 +89,7 @@
       {
         "name": "",
         "type": "tuple",
-        "internalType": "struct OpenGate.Order",
+        "internalType": "struct OpenGateV2.Order",
         "components": [
           {
             "name": "sender",
@@ -136,8 +118,8 @@
           },
           {
             "name": "recipient",
-            "type": "address",
-            "internalType": "address"
+            "type": "string",
+            "internalType": "string"
           },
           {
             "name": "fillDeadline",
@@ -180,16 +162,11 @@
       },
       {
         "name": "recipient",
-        "type": "address",
-        "internalType": "address"
+        "type": "string",
+        "internalType": "string"
       },
       {
         "name": "fillDeadline",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "sourceChainId",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -273,8 +250,8 @@
       },
       {
         "name": "recipient",
-        "type": "address",
-        "internalType": "address"
+        "type": "string",
+        "internalType": "string"
       },
       {
         "name": "fillDeadline",
@@ -375,9 +352,9 @@
       },
       {
         "name": "recipient",
-        "type": "address",
+        "type": "string",
         "indexed": false,
-        "internalType": "address"
+        "internalType": "string"
       },
       {
         "name": "fillDeadline",

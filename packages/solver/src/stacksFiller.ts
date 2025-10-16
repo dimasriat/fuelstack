@@ -130,12 +130,8 @@ export class StacksOrderFiller {
       // Step 8: Build fill transaction
       console.log('  🚀 Executing fill transaction on Stacks...');
 
-      // TODO: Cross-chain address incompatibility workaround
-      // The order's recipient is an EVM address (0x...) which cannot be used on Stacks.
-      // For now, we use a configured Stacks recipient address.
-      // Future improvement: Add address mapping in the contract or allow users to specify
-      // their Stacks address when opening orders on Arbitrum.
-      const stacksRecipient = SOLVER_STACKS_CONFIG.recipientAddress;
+      // recipient is now a Stacks address from OpenGateV2 (string type)
+      const stacksRecipient = recipient;
       const solverEvmAddress = SOLVER_STACKS_CONFIG.solverEvmAddress;
 
       console.log(`  👤 Recipient (Stacks): ${stacksRecipient}`);
