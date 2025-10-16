@@ -33,6 +33,16 @@ export const ERC20_ABI = [
   },
   {
     inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' }
+    ],
+    name: 'allowance',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    inputs: [
       { name: 'to', type: 'address' },
       { name: 'amount', type: 'uint256' }
     ],
@@ -142,6 +152,11 @@ export const EXPLORER_URLS = {
 export function getTxExplorerUrl(chainId: number, txHash: string): string {
   const baseUrl = EXPLORER_URLS[chainId as keyof typeof EXPLORER_URLS];
   return baseUrl ? `${baseUrl}/tx/${txHash}` : '#';
+}
+
+// Helper function to get Stacks explorer URL
+export function getStacksTxExplorerUrl(txId: string): string {
+  return `https://explorer.hiro.so/txid/${txId}?chain=testnet`;
 }
 
 // Helper function to get token address for chain

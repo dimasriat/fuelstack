@@ -16,6 +16,7 @@ import {
   getOpenGateAddress,
   getTxExplorerUrl,
 } from '../lib/contracts';
+import { OrderStorage } from '../lib/orderStorage';
 
 const TOKENS = [
   { symbol: 'USDC', name: 'USD Coin', address: '0xFe1EF6950833f6C148DB87e0131aB44B16F9C91F' },
@@ -59,7 +60,7 @@ export const Bridge = () => {
   });
 
   // Read user balance
-  const { data: balance, refetch: refetchBalance } = useReadContract({
+  const { data: balance } = useReadContract({
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
@@ -114,7 +115,24 @@ export const Bridge = () => {
           });
 
           if (decoded.eventName === 'OrderOpened') {
-            setOrderId(decoded.args.orderId as bigint);
+            const orderId = decoded.args.orderId as bigint;
+            setOrderId(orderId);
+
+            // Save order to localStorage for tracking
+            OrderStorage.addOrder({
+              orderId: orderId.toString(),
+              chainId: selectedChain.id,
+              chainName: selectedChain.name,
+              tokenIn: selectedToken.symbol,
+              amountIn: amount,
+              tokenOut: outputType === 'stx' ? 'STX' : 'sBTC',
+              amountOut: outputType === 'stx' ? '1.0' : '1.0',
+              recipient: stacksAddress,
+              txHash: bridgeHash!,
+              status: 'OPENED',
+              createdAt: Date.now(),
+            });
+
             break;
           }
         } catch {
@@ -122,7 +140,7 @@ export const Bridge = () => {
         }
       }
     }
-  }, [isBridgeSuccess, bridgeReceipt, bridgeHash]);
+  }, [isBridgeSuccess, bridgeReceipt, bridgeHash, selectedChain, selectedToken, amount, outputType, stacksAddress]);
 
   // Refetch allowance after approval
   useEffect(() => {
@@ -317,7 +335,7 @@ export const Bridge = () => {
             <Button variant="secondary" className="w-full text-lg py-4" disabled>
               Loading token data...
             </Button>
-          ) : balance && BigInt(parseUnits(amount, decimals)) > balance ? (
+          ) : balance && parseUnits(amount, decimals) > balance ? (
             <Button variant="secondary" className="w-full text-lg py-4" disabled>
               Insufficient Balance
             </Button>

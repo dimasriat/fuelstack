@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract, usePublicClient } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -8,8 +8,8 @@ import { ChainSelector, type Chain } from '../components/ChainSelector';
 import { ERC20_ABI, DEFAULT_MINT_AMOUNTS, getTokenAddress, getTxExplorerUrl } from '../lib/contracts';
 
 const TOKENS = [
-  { symbol: 'USDC' as const, name: 'Mock USDC', address: '0xFe1EF6950833f6C148DB87e0131aB44B16F9C91F' as `0x${string}` },
-  { symbol: 'WBTC' as const, name: 'Mock WBTC', address: '0xfe0bA1A1676Bf7ec0AB3e578db8252ff1524C380' as `0x${string}` },
+  { symbol: 'USDC', name: 'Mock USDC', address: '0xFe1EF6950833f6C148DB87e0131aB44B16F9C91F' },
+  { symbol: 'WBTC', name: 'Mock WBTC', address: '0xfe0bA1A1676Bf7ec0AB3e578db8252ff1524C380' },
 ];
 
 const CHAINS: Chain[] = [
@@ -19,28 +19,20 @@ const CHAINS: Chain[] = [
 ];
 
 export const Faucet = () => {
-  const { address, isConnected, chain: connectedChain } = useAccount();
+  const { address, isConnected } = useAccount();
   const [selectedChain, setSelectedChain] = useState(CHAINS[0]);
   const [selectedToken, setSelectedToken] = useState(TOKENS[0]);
   const [message, setMessage] = useState('');
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
 
   // Get token address for selected chain
-  const tokenAddress = getTokenAddress(selectedChain.id, selectedToken.symbol);
+  const tokenAddress = getTokenAddress(selectedChain.id, selectedToken.symbol as 'USDC' | 'WBTC');
 
   // Read token decimals
   const { data: decimals } = useReadContract({
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: 'decimals',
-    chainId: selectedChain.id,
-  });
-
-  // Read token symbol
-  const { data: tokenSymbol } = useReadContract({
-    address: tokenAddress,
-    abi: ERC20_ABI,
-    functionName: 'symbol',
     chainId: selectedChain.id,
   });
 
@@ -68,7 +60,7 @@ export const Faucet = () => {
   // Update message when transaction is confirmed
   useEffect(() => {
     if (isSuccess && hash) {
-      const amount = DEFAULT_MINT_AMOUNTS[selectedToken.symbol];
+      const amount = DEFAULT_MINT_AMOUNTS[selectedToken.symbol as 'USDC' | 'WBTC'];
       setMessage(`Successfully minted ${amount} ${selectedToken.symbol}!`);
       setTxHash(hash);
       refetchBalance();
@@ -89,7 +81,7 @@ export const Faucet = () => {
     setTxHash(null);
 
     try {
-      const amount = DEFAULT_MINT_AMOUNTS[selectedToken.symbol];
+      const amount = DEFAULT_MINT_AMOUNTS[selectedToken.symbol as 'USDC' | 'WBTC'];
       const amountInWei = parseUnits(amount, decimals);
 
       writeContract({
@@ -160,7 +152,7 @@ export const Faucet = () => {
         <div className="glass rounded-2xl p-6">
           <div className="text-sm text-zinc-500 mb-2">You will receive</div>
           <div className="text-3xl font-bold text-white">
-            {DEFAULT_MINT_AMOUNTS[selectedToken.symbol]} {selectedToken.symbol}
+            {DEFAULT_MINT_AMOUNTS[selectedToken.symbol as 'USDC' | 'WBTC']} {selectedToken.symbol}
           </div>
         </div>
 
