@@ -11,7 +11,6 @@ import { ChainSelector, type Chain } from '../components/ChainSelector';
 import {
   ERC20_ABI,
   OPENGATE_ABI,
-  BRIDGE_OUTPUT_AMOUNTS,
   SBTC_CONTRACT_ADDRESS,
   getTokenAddress,
   getOpenGateAddress,
@@ -20,6 +19,7 @@ import {
 } from '../lib/contracts';
 import { OrderStorage } from '../lib/orderStorage';
 import { OrderTracker } from '../lib/orderTracker';
+import { PriceService, type PriceData } from '../lib/priceService';
 
 const TOKENS = [
   { symbol: 'USDC', name: 'USD Coin', address: '0xFe1EF6950833f6C148DB87e0131aB44B16F9C91F' },
@@ -52,6 +52,9 @@ export const Bridge = () => {
   const [orderStatus, setOrderStatus] = useState<'OPENED' | 'FILLED' | null>(null);
   const [fillTxId, setFillTxId] = useState<string | null>(null);
   const [isPollingStatus, setIsPollingStatus] = useState(false);
+  const [prices, setPrices] = useState<PriceData | null>(null);
+  const [pricesLoading, setPricesLoading] = useState(true);
+  const [pricesError, setPricesError] = useState<string | null>(null);
 
   // Get addresses
   const tokenAddress = getTokenAddress(selectedChain.id, selectedToken.symbol as 'USDC' | 'WBTC');
@@ -124,6 +127,12 @@ export const Bridge = () => {
             const orderId = decoded.args.orderId as bigint;
             setOrderId(orderId);
 
+            // Calculate output amount for storage
+            const calculatedAmount = calculateOutputAmount();
+            const formattedAmount = calculatedAmount
+              ? PriceService.formatAmount(calculatedAmount)
+              : '0';
+
             // Save order to localStorage for tracking
             OrderStorage.addOrder({
               orderId: orderId.toString(),
@@ -132,7 +141,7 @@ export const Bridge = () => {
               tokenIn: selectedToken.symbol,
               amountIn: amount,
               tokenOut: outputType === 'stx' ? 'STX' : 'sBTC',
-              amountOut: outputType === 'stx' ? '1.0' : '1.0',
+              amountOut: formattedAmount,
               recipient: stacksAddress,
               txHash: bridgeHash!,
               status: 'OPENED',
@@ -199,6 +208,46 @@ export const Bridge = () => {
     return () => clearInterval(interval);
   }, [orderId]);
 
+  // Fetch prices on mount and refresh periodically
+  useEffect(() => {
+    const fetchPrices = async () => {
+      try {
+        setPricesLoading(true);
+        setPricesError(null);
+        const priceData = await PriceService.fetchPrices();
+        setPrices(priceData);
+      } catch (error) {
+        console.error('Error fetching prices:', error);
+        setPricesError('Failed to load prices');
+      } finally {
+        setPricesLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchPrices();
+
+    // Refresh prices every 60 seconds
+    const interval = setInterval(fetchPrices, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate output amount based on current prices
+  const calculateOutputAmount = (): number | null => {
+    if (!prices || !amount || isNaN(parseFloat(amount))) return null;
+
+    const inputAmount = parseFloat(amount);
+    const outputToken = outputType === 'stx' ? 'STX' : 'sBTC';
+
+    return PriceService.calculateOutputAmount(
+      selectedToken.symbol as 'USDC' | 'WBTC',
+      inputAmount,
+      outputToken,
+      prices
+    );
+  };
+
   const handleApprove = async () => {
     if (!address || !decimals || !openGateAddress) return;
 
@@ -232,7 +281,19 @@ export const Bridge = () => {
 
     try {
       const amountIn = parseUnits(amount, decimals);
-      const amountOut = BRIDGE_OUTPUT_AMOUNTS[outputType === 'stx' ? 'STX' : 'sBTC'];
+
+      // Calculate dynamic output amount based on current prices
+      const calculatedAmount = calculateOutputAmount();
+      if (!calculatedAmount || !prices) {
+        setMessage('Error: Unable to calculate output amount. Please try again.');
+        return;
+      }
+
+      const amountOut = PriceService.toContractAmount(
+        calculatedAmount,
+        outputType === 'stx' ? 'STX' : 'sBTC'
+      );
+
       const tokenOut = outputType === 'stx'
         ? '0x0000000000000000000000000000000000000000' as `0x${string}`
         : SBTC_CONTRACT_ADDRESS;
@@ -319,12 +380,29 @@ export const Bridge = () => {
           <div className="flex items-baseline justify-between">
             <span className="text-sm text-zinc-400">You will receive</span>
             <div className="text-right">
-              <div className="text-2xl font-bold text-primary-500">
-                1.0 {OUTPUT_TYPES.find(t => t.id === outputType)?.label}
-              </div>
-              <div className="text-xs text-zinc-500 mt-1">
-                Fixed output amount
-              </div>
+              {pricesLoading ? (
+                <div className="text-xl text-zinc-500">Loading prices...</div>
+              ) : pricesError ? (
+                <div className="text-sm text-red-400">{pricesError}</div>
+              ) : (() => {
+                const calculatedAmount = calculateOutputAmount();
+                return calculatedAmount ? (
+                  <>
+                    <div className="text-2xl font-bold text-primary-500">
+                      {PriceService.formatAmount(calculatedAmount)} {OUTPUT_TYPES.find(t => t.id === outputType)?.label}
+                    </div>
+                    <div className="text-xs text-zinc-500 mt-1">
+                      {prices && (
+                        <span>
+                          BTC: ${prices.btcUsd.toFixed(2)} | STX: ${prices.stxUsd.toFixed(6)}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-xl text-zinc-500">Enter amount</div>
+                );
+              })()}
             </div>
           </div>
         </div>
