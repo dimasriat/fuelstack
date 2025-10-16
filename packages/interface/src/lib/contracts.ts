@@ -43,6 +43,56 @@ export const ERC20_ABI = [
   }
 ] as const;
 
+// OpenGate ABI - cross-chain bridge contract
+export const OPENGATE_ABI = [
+  {
+    inputs: [
+      { name: 'tokenIn', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'amountOut', type: 'uint256' },
+      { name: 'recipient', type: 'string' },  // Stacks principal address
+      { name: 'fillDeadline', type: 'uint256' }
+    ],
+    name: 'open',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function'
+  },
+  {
+    inputs: [{ name: 'orderId', type: 'uint256' }],
+    name: 'orders',
+    outputs: [
+      { name: 'sender', type: 'address' },
+      { name: 'tokenIn', type: 'address' },
+      { name: 'amountIn', type: 'uint256' },
+      { name: 'tokenOut', type: 'address' },
+      { name: 'amountOut', type: 'uint256' },
+      { name: 'recipient', type: 'string' },
+      { name: 'fillDeadline', type: 'uint256' },
+      { name: 'sourceChainId', type: 'uint256' }
+    ],
+    stateMutability: 'view',
+    type: 'function'
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, name: 'orderId', type: 'uint256' },
+      { indexed: true, name: 'sender', type: 'address' },
+      { indexed: true, name: 'tokenIn', type: 'address' },
+      { indexed: false, name: 'amountIn', type: 'uint256' },
+      { indexed: false, name: 'tokenOut', type: 'address' },
+      { indexed: false, name: 'amountOut', type: 'uint256' },
+      { indexed: false, name: 'recipient', type: 'string' },
+      { indexed: false, name: 'fillDeadline', type: 'uint256' },
+      { indexed: false, name: 'sourceChainId', type: 'uint256' }
+    ],
+    name: 'OrderOpened',
+    type: 'event'
+  }
+] as const;
+
 // Token addresses per chain
 export const TOKEN_ADDRESSES = {
   arbitrumSepolia: {
@@ -57,6 +107,22 @@ export const TOKEN_ADDRESSES = {
     USDC: '0xFe1EF6950833f6C148DB87e0131aB44B16F9C91F' as `0x${string}`, // Update if different
     WBTC: '0xfe0bA1A1676Bf7ec0AB3e578db8252ff1524C380' as `0x${string}`, // Update if different
   },
+} as const;
+
+// OpenGate contract addresses per chain
+export const OPENGATE_ADDRESSES = {
+  421614: '0x842876202cd586d8e0ae44fb45a22479af17d1a5' as `0x${string}`, // Arbitrum Sepolia
+  // 84532: '0x...' as `0x${string}`, // Base Sepolia - TODO: Add when deployed
+  // 11155420: '0x...' as `0x${string}`, // Optimism Sepolia - TODO: Add when deployed
+} as const;
+
+// sBTC contract address on Stacks (for tokenOut parameter)
+export const SBTC_CONTRACT_ADDRESS = '0x3449353C85500Ee971eE64b193D15eF39BF01f04' as `0x${string}`;
+
+// Hardcoded output amounts (1 STX or 1 sBTC)
+export const BRIDGE_OUTPUT_AMOUNTS = {
+  STX: 1000000000000000000n,  // 1 STX with 18 decimals (EVM format, solver converts to 6)
+  sBTC: 100000000n,            // 1 sBTC with 8 decimals
 } as const;
 
 // Default mint amounts per token
@@ -90,4 +156,9 @@ export function getTokenAddress(chainId: number, symbol: 'USDC' | 'WBTC'): `0x${
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);
   }
+}
+
+// Helper function to get OpenGate address for chain
+export function getOpenGateAddress(chainId: number): `0x${string}` | undefined {
+  return OPENGATE_ADDRESSES[chainId as keyof typeof OPENGATE_ADDRESSES];
 }
