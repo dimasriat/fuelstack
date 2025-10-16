@@ -25,7 +25,7 @@ export const SOURCE_CHAINS: Record<number, ChainConfig> = {
   421614: {
     chainId: 421614,
     name: 'Arbitrum Sepolia',
-    rpcUrl: 'https://sepolia-rollup.arbitrum.io/rpc',
+    rpcUrl: 'https://arb-sepolia.g.alchemy.com/v2/uggJ_NtsPSdds9eJt-bwN',
     // openGate: '0xc2287A4DF839A6ca7B97202178914208BD1B18E2', // TODO: Set actual OpenGate contract address after deployment
     openGate: '0x842876202cd586d8e0ae44fb45a22479af17d1a5',
     nativeCurrency: 'ETH',

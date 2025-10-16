@@ -36,7 +36,7 @@ export const CHAIN_IDS = {
 
 // RPC URLs (public endpoints)
 export const RPC_URLS = {
-  arbitrumSepolia: 'https://sepolia-rollup.arbitrum.io/rpc',
+  arbitrumSepolia: 'https://arb-sepolia.g.alchemy.com/v2/uggJ_NtsPSdds9eJt-bwN',
   baseSepolia: 'https://base-sepolia-rpc.publicnode.com',
 };
 
