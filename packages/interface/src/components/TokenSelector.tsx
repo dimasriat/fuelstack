@@ -32,7 +32,7 @@ export const TokenSelector = ({ tokens, selected, onSelect }: TokenSelectorProps
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full mt-2 left-0 w-48 glass rounded-xl overflow-hidden z-20 shadow-glow">
+          <div className="absolute top-full mt-2 left-0 w-48 glass-solid rounded-xl overflow-hidden z-20 shadow-glow">
             {tokens.map((token) => (
               <button
                 key={token.address}
@@ -40,10 +40,10 @@ export const TokenSelector = ({ tokens, selected, onSelect }: TokenSelectorProps
                   onSelect(token);
                   setIsOpen(false);
                 }}
-                className="w-full px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/5 last:border-0"
+                className="w-full px-4 py-3 text-left hover:bg-zinc-800 transition-colors border-b border-white/10 last:border-0"
               >
-                <div className="font-medium">{token.symbol}</div>
-                <div className="text-sm text-zinc-500">{token.name}</div>
+                <div className="font-medium text-white">{token.symbol}</div>
+                <div className="text-sm text-zinc-400">{token.name}</div>
               </button>
             ))}
           </div>
