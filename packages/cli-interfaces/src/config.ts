@@ -84,9 +84,9 @@ export const EXPLORER_URLS = {
 
 // Source Chain: Arbitrum Sepolia
 export const SOURCE_CONTRACTS = {
-  openGate: '0xc2287A4DF839A6ca7B97202178914208BD1B18E2', // TODO: Update after deployment
-  chainRegistry: '0xADe337b0196FE57Adc9Fc31FFA3D47e37cf24842', // TODO: Update after deployment
-  usdc: '0x3Ea1d18c1e29F0b18E3cAD01CFd62456Dbb04fe9', // TODO: Update after deployment
+  openGate: '0x842876202cd586d8e0ae44fb45a22479af17d1a5',
+  usdc: '0xFe1EF6950833f6C148DB87e0131aB44B16F9C91F',
+  wbtc: '0xfe0bA1A1676Bf7ec0AB3e578db8252ff1524C380',
 };
 
 // Destination Chain: Base Sepolia
