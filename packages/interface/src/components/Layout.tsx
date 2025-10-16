@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { ArrowLeftRight, Droplet, History } from 'lucide-react';
+import { ArrowLeftRight, Droplet, History, Code } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,6 +14,7 @@ export const Layout = ({ children }: LayoutProps) => {
     { path: '/', label: 'Bridge', icon: ArrowLeftRight },
     { path: '/faucet', label: 'Faucet', icon: Droplet },
     { path: '/explorer', label: 'Explorer', icon: History },
+    { path: '/widget', label: 'Widget', icon: Code },
   ];
 
   return (
