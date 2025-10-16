@@ -1,5 +1,5 @@
 {
-  "name": "@fuelstack-monorepo/interface",
+  "name": "interface",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,9 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@stacks/connect": "^8.2.0",
-    "@stacks/network": "^7.2.0",
-    "@stacks/transactions": "^7.0.5",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
