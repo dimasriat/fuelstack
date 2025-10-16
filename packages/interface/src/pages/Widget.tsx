@@ -15,6 +15,38 @@ export const Widget = () => {
   const npmInstallCode = 'npm install @fuelstack/widget';
   const yarnInstallCode = 'yarn add @fuelstack/widget';
 
+  const ReactCodeHighlighted = () => (
+    <>
+      <span className="text-purple-400">import</span> <span className="text-white">{'{'}</span> <span className="text-blue-300">FuelStackWidget</span> <span className="text-white">{'}'}</span> <span className="text-purple-400">from</span> <span className="text-green-300">'@fuelstack/widget'</span><span className="text-white">;</span>
+      {'\n'}
+      <span className="text-purple-400">import</span> <span className="text-green-300">'@fuelstack/widget/styles.css'</span><span className="text-white">;</span>
+      {'\n\n'}
+      <span className="text-purple-400">function</span> <span className="text-yellow-300">App</span><span className="text-white">() {'{'}</span>
+      {'\n  '}
+      <span className="text-purple-400">return</span> <span className="text-white">(</span>
+      {'\n    '}
+      <span className="text-gray-400">&lt;</span><span className="text-blue-300">FuelStackWidget</span>
+      {'\n      '}
+      <span className="text-blue-300">chains</span><span className="text-white">=</span><span className="text-white">{'{'}</span><span className="text-white">[</span><span className="text-green-300">'arbitrum'</span><span className="text-white">,</span> <span className="text-green-300">'base'</span><span className="text-white">,</span> <span className="text-green-300">'optimism'</span><span className="text-white">]</span><span className="text-white">{'}'}</span>
+      {'\n      '}
+      <span className="text-blue-300">defaultToken</span><span className="text-white">=</span><span className="text-green-300">"USDC"</span>
+      {'\n      '}
+      <span className="text-blue-300">theme</span><span className="text-white">=</span><span className="text-green-300">"dark"</span>
+      {'\n      '}
+      <span className="text-blue-300">onSuccess</span><span className="text-white">=</span><span className="text-white">{'{'}</span><span className="text-white">(</span><span className="text-orange-300">order</span><span className="text-white">) </span><span className="text-purple-400">=&gt;</span> <span className="text-white">{'{'}</span>
+      {'\n        '}
+      <span className="text-white">console.</span><span className="text-yellow-300">log</span><span className="text-white">(</span><span className="text-green-300">'Bridge order created:'</span><span className="text-white">,</span> <span className="text-orange-300">order</span><span className="text-white">);</span>
+      {'\n      '}
+      <span className="text-white">{'}'}</span><span className="text-white">{'}'}</span>
+      {'\n    '}
+      <span className="text-gray-400">/&gt;</span>
+      {'\n  '}
+      <span className="text-white">);</span>
+      {'\n'}
+      <span className="text-white">{'}'}</span>
+    </>
+  );
+
   const reactCode = `import { FuelStackWidget } from '@fuelstack/widget';
 import '@fuelstack/widget/styles.css';
 
@@ -30,6 +62,44 @@ function App() {
     />
   );
 }`;
+
+  const VanillaCodeHighlighted = () => (
+    <>
+      <span className="text-gray-500">&lt;!-- Add script tag --&gt;</span>
+      {'\n'}
+      <span className="text-gray-400">&lt;</span><span className="text-blue-300">script</span> <span className="text-blue-300">src</span><span className="text-white">=</span><span className="text-green-300">"https://unpkg.com/@fuelstack/widget@latest/dist/widget.js"</span><span className="text-gray-400">&gt;&lt;/</span><span className="text-blue-300">script</span><span className="text-gray-400">&gt;</span>
+      {'\n'}
+      <span className="text-gray-400">&lt;</span><span className="text-blue-300">link</span> <span className="text-blue-300">rel</span><span className="text-white">=</span><span className="text-green-300">"stylesheet"</span> <span className="text-blue-300">href</span><span className="text-white">=</span><span className="text-green-300">"https://unpkg.com/@fuelstack/widget@latest/dist/styles.css"</span><span className="text-gray-400">&gt;</span>
+      {'\n\n'}
+      <span className="text-gray-500">&lt;!-- Add widget container --&gt;</span>
+      {'\n'}
+      <span className="text-gray-400">&lt;</span><span className="text-blue-300">div</span> <span className="text-blue-300">id</span><span className="text-white">=</span><span className="text-green-300">"fuelstack-widget"</span><span className="text-gray-400">&gt;&lt;/</span><span className="text-blue-300">div</span><span className="text-gray-400">&gt;</span>
+      {'\n\n'}
+      <span className="text-gray-400">&lt;</span><span className="text-blue-300">script</span><span className="text-gray-400">&gt;</span>
+      {'\n  '}
+      <span className="text-gray-500">// Initialize widget</span>
+      {'\n  '}
+      <span className="text-white">FuelStack.</span><span className="text-yellow-300">init</span><span className="text-white">(</span><span className="text-white">{'{'}</span>
+      {'\n    '}
+      <span className="text-blue-300">container</span><span className="text-white">:</span> <span className="text-green-300">'#fuelstack-widget'</span><span className="text-white">,</span>
+      {'\n    '}
+      <span className="text-blue-300">chains</span><span className="text-white">:</span> <span className="text-white">[</span><span className="text-green-300">'arbitrum'</span><span className="text-white">,</span> <span className="text-green-300">'base'</span><span className="text-white">,</span> <span className="text-green-300">'optimism'</span><span className="text-white">]</span><span className="text-white">,</span>
+      {'\n    '}
+      <span className="text-blue-300">defaultToken</span><span className="text-white">:</span> <span className="text-green-300">'USDC'</span><span className="text-white">,</span>
+      {'\n    '}
+      <span className="text-blue-300">theme</span><span className="text-white">:</span> <span className="text-green-300">'dark'</span><span className="text-white">,</span>
+      {'\n    '}
+      <span className="text-blue-300">onSuccess</span><span className="text-white">:</span> <span className="text-white">(</span><span className="text-orange-300">order</span><span className="text-white">) </span><span className="text-purple-400">=&gt;</span> <span className="text-white">{'{'}</span>
+      {'\n      '}
+      <span className="text-white">console.</span><span className="text-yellow-300">log</span><span className="text-white">(</span><span className="text-green-300">'Bridge order created:'</span><span className="text-white">,</span> <span className="text-orange-300">order</span><span className="text-white">);</span>
+      {'\n    '}
+      <span className="text-white">{'}'}</span>
+      {'\n  '}
+      <span className="text-white">{'}'}</span><span className="text-white">);</span>
+      {'\n'}
+      <span className="text-gray-400">&lt;/</span><span className="text-blue-300">script</span><span className="text-gray-400">&gt;</span>
+    </>
+  );
 
   const vanillaCode = `<!-- Add script tag -->
 <script src="https://unpkg.com/@fuelstack/widget@latest/dist/widget.js"></script>
@@ -50,6 +120,42 @@ function App() {
     }
   });
 </script>`;
+
+  const NextjsCodeHighlighted = () => (
+    <>
+      <span className="text-green-300">'use client'</span><span className="text-white">;</span>
+      {'\n\n'}
+      <span className="text-purple-400">import</span> <span className="text-blue-300">dynamic</span> <span className="text-purple-400">from</span> <span className="text-green-300">'next/dynamic'</span><span className="text-white">;</span>
+      {'\n\n'}
+      <span className="text-purple-400">const</span> <span className="text-blue-300">FuelStackWidget</span> <span className="text-white">=</span> <span className="text-yellow-300">dynamic</span><span className="text-white">(</span>
+      {'\n  '}
+      <span className="text-white">() </span><span className="text-purple-400">=&gt;</span> <span className="text-purple-400">import</span><span className="text-white">(</span><span className="text-green-300">'@fuelstack/widget'</span><span className="text-white">).</span><span className="text-yellow-300">then</span><span className="text-white">((</span><span className="text-orange-300">mod</span><span className="text-white">) </span><span className="text-purple-400">=&gt;</span> <span className="text-orange-300">mod</span><span className="text-white">.FuelStackWidget)</span><span className="text-white">,</span>
+      {'\n  '}
+      <span className="text-white">{'{'}</span> <span className="text-blue-300">ssr</span><span className="text-white">:</span> <span className="text-orange-400">false</span> <span className="text-white">{'}'}</span>
+      {'\n'}
+      <span className="text-white">);</span>
+      {'\n\n'}
+      <span className="text-purple-400">export default</span> <span className="text-purple-400">function</span> <span className="text-yellow-300">BridgePage</span><span className="text-white">() {'{'}</span>
+      {'\n  '}
+      <span className="text-purple-400">return</span> <span className="text-white">(</span>
+      {'\n    '}
+      <span className="text-gray-400">&lt;</span><span className="text-blue-300">div</span> <span className="text-blue-300">className</span><span className="text-white">=</span><span className="text-green-300">"container"</span><span className="text-gray-400">&gt;</span>
+      {'\n      '}
+      <span className="text-gray-400">&lt;</span><span className="text-blue-300">FuelStackWidget</span>
+      {'\n        '}
+      <span className="text-blue-300">chains</span><span className="text-white">=</span><span className="text-white">{'{'}</span><span className="text-white">[</span><span className="text-green-300">'arbitrum'</span><span className="text-white">,</span> <span className="text-green-300">'base'</span><span className="text-white">,</span> <span className="text-green-300">'optimism'</span><span className="text-white">]</span><span className="text-white">{'}'}</span>
+      {'\n        '}
+      <span className="text-blue-300">theme</span><span className="text-white">=</span><span className="text-green-300">"dark"</span>
+      {'\n      '}
+      <span className="text-gray-400">/&gt;</span>
+      {'\n    '}
+      <span className="text-gray-400">&lt;/</span><span className="text-blue-300">div</span><span className="text-gray-400">&gt;</span>
+      {'\n  '}
+      <span className="text-white">);</span>
+      {'\n'}
+      <span className="text-white">{'}'}</span>
+    </>
+  );
 
   const nextjsCode = `'use client';
 
@@ -178,22 +284,114 @@ export default function BridgePage() {
           </button>
         </div>
 
-        {/* Code Examples */}
-        {activeTab === 'react' ? (
-          <div className="relative">
-            <pre className="glass rounded-xl p-6 overflow-x-auto">
-              <code className="text-sm text-zinc-300 whitespace-pre">{reactCode}</code>
-            </pre>
-            <CopyButton code={reactCode} section="react" />
+        {/* Code + Preview Split View */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Code Examples */}
+          <div>
+            <div className="text-sm font-medium text-zinc-400 mb-3 uppercase tracking-wide">Code</div>
+            {activeTab === 'react' ? (
+              <div className="relative">
+                <pre className="glass rounded-xl p-6 overflow-x-auto h-full">
+                  <code className="text-sm whitespace-pre font-mono"><ReactCodeHighlighted /></code>
+                </pre>
+                <CopyButton code={reactCode} section="react" />
+              </div>
+            ) : (
+              <div className="relative">
+                <pre className="glass rounded-xl p-6 overflow-x-auto h-full">
+                  <code className="text-sm whitespace-pre font-mono"><VanillaCodeHighlighted /></code>
+                </pre>
+                <CopyButton code={vanillaCode} section="vanilla" />
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="relative">
-            <pre className="glass rounded-xl p-6 overflow-x-auto">
-              <code className="text-sm text-zinc-300 whitespace-pre">{vanillaCode}</code>
-            </pre>
-            <CopyButton code={vanillaCode} section="vanilla" />
+
+          {/* Live Preview */}
+          <div>
+            <div className="text-sm font-medium text-zinc-400 mb-3 uppercase tracking-wide">Preview</div>
+            <div className="glass rounded-xl p-6">
+              <div className="space-y-4">
+                {/* Mini Widget Preview */}
+                <div className="text-center pb-4 border-b border-white/10">
+                  <div className="text-xl font-bold text-white mb-1">Bridge to Stacks</div>
+                  <div className="text-sm text-zinc-500">Embedded widget preview</div>
+                </div>
+
+                {/* Chain Selector Preview */}
+                <div>
+                  <label className="block text-xs font-medium text-zinc-500 mb-2 uppercase tracking-wide">
+                    From
+                  </label>
+                  <div className="glass rounded-lg p-3 flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600"></div>
+                    <span className="text-sm font-medium text-white">Arbitrum Sepolia</span>
+                  </div>
+                </div>
+
+                {/* Token Input Preview */}
+                <div>
+                  <div className="glass rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5">
+                        <span className="text-sm font-medium text-white">USDC</span>
+                        <svg className="w-3 h-3 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                      <input
+                        type="text"
+                        value="100"
+                        readOnly
+                        className="flex-1 bg-transparent text-xl font-semibold text-white outline-none"
+                      />
+                    </div>
+                    <div className="text-xs text-zinc-500 pt-2 border-t border-white/5">
+                      Balance: 1,000 USDC
+                    </div>
+                  </div>
+                </div>
+
+                {/* Arrow */}
+                <div className="flex justify-center -my-2">
+                  <div className="w-8 h-8 rounded-full glass flex items-center justify-center">
+                    <svg className="w-4 h-4 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Output Preview */}
+                <div className="glass rounded-lg p-3 flex items-baseline justify-between">
+                  <span className="text-xs text-zinc-500">You will receive</span>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-primary-500">230.41 STX</div>
+                    <div className="text-xs text-zinc-600">≈ $100</div>
+                  </div>
+                </div>
+
+                {/* Stacks Address Preview */}
+                <div>
+                  <input
+                    type="text"
+                    placeholder="ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM"
+                    className="w-full glass rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 outline-none focus:ring-1 focus:ring-primary-500/30"
+                    readOnly
+                  />
+                </div>
+
+                {/* Bridge Button Preview */}
+                <button className="w-full bg-gradient-primary text-white font-medium py-3 rounded-lg hover:opacity-90 transition-opacity">
+                  Bridge Tokens
+                </button>
+
+                {/* Note */}
+                <div className="pt-2 text-center text-xs text-zinc-600">
+                  This is a preview - connect wallet to test
+                </div>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
       </Card>
 
       {/* Next.js Integration */}
@@ -205,7 +403,7 @@ export default function BridgePage() {
 
         <div className="relative">
           <pre className="glass rounded-xl p-6 overflow-x-auto">
-            <code className="text-sm text-zinc-300 whitespace-pre">{nextjsCode}</code>
+            <code className="text-sm whitespace-pre font-mono"><NextjsCodeHighlighted /></code>
           </pre>
           <CopyButton code={nextjsCode} section="nextjs" />
         </div>
