@@ -12,7 +12,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variants = {
       primary: 'bg-gradient-primary hover:shadow-glow text-white',
-      secondary: 'glass glass-hover text-zinc-900',
+      secondary: 'glass glass-hover text-white',
       ghost: 'hover:bg-white/5 text-zinc-600',
     };
 

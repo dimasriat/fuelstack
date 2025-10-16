@@ -230,6 +230,7 @@ export const Bridge = () => {
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  onWheel={(e) => e.currentTarget.blur()}
                   placeholder="0.0"
                   className="flex-1 bg-transparent text-3xl font-semibold focus:outline-none text-white placeholder:text-zinc-700"
                 />
