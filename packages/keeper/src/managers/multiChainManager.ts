@@ -6,7 +6,7 @@ import { db } from '../database/db';
 
 export class MultiChainManager {
   private openGateListeners: Map<number, OpenGateListener> = new Map();
-  private stacksFillGateListener: StacksFillGateListener;
+  private stacksFillGateListener!: StacksFillGateListener;
 
   constructor() {
     this.initializeListeners();

@@ -54,7 +54,8 @@ export const EXPLORER_URLS = {
 export const SOURCE_CONTRACTS = {
   // openGate: '0xc2287A4DF839A6ca7B97202178914208BD1B18E2' as Address,
   openGate: '0x842876202cd586d8e0ae44fb45a22479af17d1a5' as Address,
-  usdc: '0x3Ea1d18c1e29F0b18E3cAD01CFd62456Dbb04fe9' as Address,
+  // usdc: '0x3ea1d18c1e29F0b18E3cAD01CFd62456Dbb04fe9' as Address,
+  usdc: '0xFe1EF6950833f6C148DB87e0131aB44B16F9C91F' as Address,
 };
 
 // Destination Chain: Stacks Testnet (only)
